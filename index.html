@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Airfast Equalizing Maintenance Dashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    window.tailwind = {
+      theme: {
+        extend: {
+          colors: {
+            airfast: "#0C528A",
+            charcoal: "#05192E"
+          },
+          fontFamily: {
+            sans: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"]
+          }
+        }
+      }
+    };
+  </script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body class="auth-locked bg-[#F5F7FA] font-sans text-charcoal">
+  <section class="login-screen" id="loginScreen" aria-label="Dashboard authentication">
+    <div class="login-panel">
+      <img class="login-jaws-logo" src="assets/jaws_login_logo.png" alt="JAWS logo" />
+
+      <div class="login-copy">
+        <h1>Maintenance Planning Dashboard</h1>
+        <p>Secure access for aircraft utilization, inspection modeling, and equalized maintenance planning.</p>
+      </div>
+
+      <form class="login-form" id="loginForm" autocomplete="on">
+        <label for="loginUsername">Username</label>
+        <input id="loginUsername" name="username" type="text" autocomplete="username" required />
+
+        <label for="loginPassword">Password</label>
+        <div class="password-field">
+          <input id="loginPassword" name="password" type="password" autocomplete="current-password" required />
+          <button class="password-visibility-button" id="passwordVisibilityButton" type="button" aria-label="Show password" aria-pressed="false">
+            <img class="eye-image" id="passwordEyeImage" src="assets/eye_closed.png" alt="" aria-hidden="true" />
+          </button>
+        </div>
+
+        <p class="login-error" id="loginError" role="alert" aria-live="polite"></p>
+        <button class="login-button" type="submit">Login</button>
+      </form>
+
+      <div class="login-partnership" aria-label="In partnership with Airfast Indonesia">
+        <span>in partnership with</span>
+        <img src="assets/airfast_logo_cropped.png" alt="Airfast Indonesia logo" />
+      </div>
+      <p class="login-version">Beta Version 1.1.0</p>
+    </div>
+
+    <div class="login-visual" aria-hidden="true">
+      <img class="login-aircraft-image" src="assets/airfast_auth_background_portrait.png" alt="" />
+    </div>
+  </section>
+
+  <div class="app-shell" id="dashboardApp" aria-hidden="true">
+    <aside class="sidebar" id="sidebar">
+      <div class="brand">
+        <img src="logo.png" alt="Airfast Indonesia logo" />
+      </div>
+
+      <nav class="primary-nav" aria-label="Main navigation">
+        <button class="nav-link active" data-section="data-source" type="button">Data Source</button>
+        <button class="nav-link" data-section="basic-inspection" type="button">Basic Inspection</button>
+        <button class="nav-link" data-section="equalized-inspection" type="button">Equalized Inspection</button>
+      </nav>
+    </aside>
+
+    <div class="main-panel">
+      <header class="topbar">
+        <button class="menu-button" id="menuButton" aria-label="Toggle sidebar" type="button">
+          <span></span>
+          <span></span>
+          <span></span>
+        </button>
+        <div class="topbar-title">
+          <p class="eyebrow">Equalizing Maintenance Program</p>
+          <h1 id="pageTitle">Data Source</h1>
+        </div>
+        <div class="topbar-actions">
+          <img class="topbar-logo" src="jaws_logo.png" alt="JAWS logo" />
+          <div class="user-menu">
+            <button class="user-menu-button" id="userMenuButton" type="button" aria-label="Logged in user: airfastindo" aria-expanded="false">
+              <span class="user-icon" aria-hidden="true"></span>
+            </button>
+            <div class="user-dropdown" id="userDropdown">
+              <p class="user-dropdown-name">airfastindo</p>
+              <div class="user-dropdown-divider"></div>
+              <button class="logout-button" id="authLogoutButton" type="button">Logout</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main class="content" id="content" tabindex="-1"></main>
+    </div>
+  </div>
+
+  <div class="image-lightbox hidden" id="imageLightbox" role="dialog" aria-modal="true" aria-hidden="true" aria-label="Aircraft image preview">
+    <button class="image-lightbox-backdrop" data-close-image-preview type="button" tabindex="-1" aria-label="Close image preview"></button>
+    <figure class="image-lightbox-panel">
+      <button class="image-lightbox-close" data-close-image-preview type="button" aria-label="Close image preview">
+        <span></span>
+        <span></span>
+      </button>
+      <img id="imageLightboxImage" src="" alt="" />
+      <figcaption id="imageLightboxCaption"></figcaption>
+    </figure>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js"></script>
+  <script src="utilization_data.js"></script>
+  <script src="basic_inspection_data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

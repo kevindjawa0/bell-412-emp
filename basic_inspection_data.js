@@ -1,0 +1,413 @@
+window.BASIC_INSPECTION_DATA = {
+  "model": "BELL 412",
+  "sourceWorkbook": "MAINTENANCE PROGRAM BELL 412 R01.xlsx",
+  "methodology": "Primary inspection Man Hours use the confirmed package totals supplied for the 25-hour, 100-hour, 300-hour, 600-hour, and 5000-hour blocks. Corrosion-control CSSD rows retain the previous estimating assumption until confirmed Man Hours are supplied. Applicability is read from the workbook so OCA and OCD maintenance programs are modeled separately.",
+  "aircraftPrograms": [
+    {
+      "key": "OCA",
+      "registration": "PK-OCA",
+      "model": "BELL 412 SP",
+      "parentTasks": [
+        {
+          "parentPackage": "25-hour",
+          "taskCard": "B412-MPDI-05-25B",
+          "intervalText": "25 HOURS OR 30 DAYS",
+          "intervalFlightHours": 25,
+          "calendarLimitDays": 30,
+          "childTasks": 161,
+          "totalChildTasks": 161,
+          "averageManHoursPerTask": 0.0373,
+          "manHours": 6.0,
+          "currentNote": "Package",
+          "taskTitle": "25 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "100-hour",
+          "taskCard": "B412-MPDI-05-100B",
+          "intervalText": "100 HOURS OR 30 DAYS",
+          "intervalFlightHours": 100,
+          "calendarLimitDays": 30,
+          "childTasks": 66,
+          "totalChildTasks": 66,
+          "averageManHoursPerTask": 0.3636,
+          "manHours": 24.0,
+          "currentNote": "Package",
+          "taskTitle": "4X25 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "300-hour",
+          "taskCard": "B412-MPDI-05-300B",
+          "intervalText": "300 HOURS OR 12 MONTHS",
+          "intervalFlightHours": 300,
+          "calendarLimitDays": 360,
+          "childTasks": 164,
+          "totalChildTasks": 164,
+          "averageManHoursPerTask": 0.3049,
+          "manHours": 50.0,
+          "currentNote": "Progressive LM/Hangar",
+          "taskTitle": "300 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "600-hour",
+          "taskCard": "B412-MPDI-05-600B",
+          "intervalText": "600 HOURS OR 12 MONTHS",
+          "intervalFlightHours": 600,
+          "calendarLimitDays": 360,
+          "childTasks": 62,
+          "totalChildTasks": 62,
+          "averageManHoursPerTask": 1.7742,
+          "manHours": 110.0,
+          "currentNote": "Progressive LM/Hangar",
+          "taskTitle": "600 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "5000-hour",
+          "taskCard": "B412-MPDI-05-5000B",
+          "intervalText": "5000 HOURS OR 5 YEARS",
+          "intervalFlightHours": 5000,
+          "calendarLimitDays": 1825,
+          "childTasks": 75,
+          "totalChildTasks": 75,
+          "averageManHoursPerTask": 9.3333,
+          "manHours": 700.0,
+          "currentNote": "Package",
+          "taskTitle": "5000 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "CSSD 25-hour",
+          "taskCard": "B412-MPDI-05-CSSD-25",
+          "intervalText": "25 HOURS OR 30 DAYS",
+          "intervalFlightHours": 25,
+          "calendarLimitDays": 30,
+          "childTasks": 69,
+          "totalChildTasks": 69,
+          "averageManHoursPerTask": 0.2174,
+          "manHours": 15.0,
+          "currentNote": "Package",
+          "taskTitle": "25 HOURS CORROSION",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "CSSD 100-hour",
+          "taskCard": "B412-MPDI-05-CSSD-100",
+          "intervalText": "100 HOURS OR 90 DAYS",
+          "intervalFlightHours": 100,
+          "calendarLimitDays": 90,
+          "childTasks": 94,
+          "totalChildTasks": 94,
+          "averageManHoursPerTask": 0.3404,
+          "manHours": 32.0,
+          "currentNote": "Package",
+          "taskTitle": "100 HOURS CORROSION",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        }
+      ],
+      "totals": {
+        "childTasks": 691,
+        "manHours": 937.0
+      }
+    },
+    {
+      "key": "OCD",
+      "registration": "PK-OCD",
+      "model": "BELL 412 EP",
+      "parentTasks": [
+        {
+          "parentPackage": "25-hour",
+          "taskCard": "B412-MPDI-05-25B",
+          "intervalText": "25 HOURS OR 30 DAYS",
+          "intervalFlightHours": 25,
+          "calendarLimitDays": 30,
+          "childTasks": 161,
+          "totalChildTasks": 161,
+          "averageManHoursPerTask": 0.0373,
+          "manHours": 6.0,
+          "currentNote": "Package",
+          "taskTitle": "25 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "100-hour",
+          "taskCard": "B412-MPDI-05-100B",
+          "intervalText": "100 HOURS OR 30 DAYS",
+          "intervalFlightHours": 100,
+          "calendarLimitDays": 30,
+          "childTasks": 66,
+          "totalChildTasks": 66,
+          "averageManHoursPerTask": 0.3636,
+          "manHours": 24.0,
+          "currentNote": "Package",
+          "taskTitle": "4X25 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "300-hour",
+          "taskCard": "B412-MPDI-05-300B",
+          "intervalText": "300 HOURS OR 12 MONTHS",
+          "intervalFlightHours": 300,
+          "calendarLimitDays": 360,
+          "childTasks": 164,
+          "totalChildTasks": 164,
+          "averageManHoursPerTask": 0.3049,
+          "manHours": 50.0,
+          "currentNote": "Progressive LM/Hangar",
+          "taskTitle": "300 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "600-hour",
+          "taskCard": "B412-MPDI-05-600B",
+          "intervalText": "600 HOURS OR 12 MONTHS",
+          "intervalFlightHours": 600,
+          "calendarLimitDays": 360,
+          "childTasks": 62,
+          "totalChildTasks": 62,
+          "averageManHoursPerTask": 1.7742,
+          "manHours": 110.0,
+          "currentNote": "Progressive LM/Hangar",
+          "taskTitle": "600 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "5000-hour",
+          "taskCard": "B412-MPDI-05-5000B",
+          "intervalText": "5000 HOURS OR 5 YEARS",
+          "intervalFlightHours": 5000,
+          "calendarLimitDays": 1825,
+          "childTasks": 75,
+          "totalChildTasks": 75,
+          "averageManHoursPerTask": 9.3333,
+          "manHours": 700.0,
+          "currentNote": "Package",
+          "taskTitle": "5000 HOURS - PART B",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "CSSD 25-hour",
+          "taskCard": "B412-MPDI-05-CSSD-25",
+          "intervalText": "25 HOURS OR 30 DAYS",
+          "intervalFlightHours": 25,
+          "calendarLimitDays": 30,
+          "childTasks": 69,
+          "totalChildTasks": 69,
+          "averageManHoursPerTask": 0.2174,
+          "manHours": 15.0,
+          "currentNote": "Package",
+          "taskTitle": "25 HOURS CORROSION",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        },
+        {
+          "parentPackage": "CSSD 100-hour",
+          "taskCard": "B412-MPDI-05-CSSD-100",
+          "intervalText": "100 HOURS OR 90 DAYS",
+          "intervalFlightHours": 100,
+          "calendarLimitDays": 90,
+          "childTasks": 94,
+          "totalChildTasks": 94,
+          "averageManHoursPerTask": 0.3404,
+          "manHours": 32.0,
+          "currentNote": "Package",
+          "taskTitle": "100 HOURS CORROSION",
+          "applicability": [
+            "OCA",
+            "OCD"
+          ],
+          "applicabilityLabel": "OCA | OCD"
+        }
+      ],
+      "totals": {
+        "childTasks": 691,
+        "manHours": 937.0
+      }
+    }
+  ],
+  "parentTasks": [
+    {
+      "parentPackage": "25-hour",
+      "taskCard": "B412-MPDI-05-25B",
+      "intervalText": "25 HOURS OR 30 DAYS",
+      "intervalFlightHours": 25,
+      "calendarLimitDays": 30,
+      "childTasks": 161,
+      "totalChildTasks": 161,
+      "averageManHoursPerTask": 0.0373,
+      "manHours": 6.0,
+      "currentNote": "Package",
+      "taskTitle": "25 HOURS - PART B",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "100-hour",
+      "taskCard": "B412-MPDI-05-100B",
+      "intervalText": "100 HOURS OR 30 DAYS",
+      "intervalFlightHours": 100,
+      "calendarLimitDays": 30,
+      "childTasks": 66,
+      "totalChildTasks": 66,
+      "averageManHoursPerTask": 0.3636,
+      "manHours": 24.0,
+      "currentNote": "Package",
+      "taskTitle": "4X25 HOURS - PART B",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "300-hour",
+      "taskCard": "B412-MPDI-05-300B",
+      "intervalText": "300 HOURS OR 12 MONTHS",
+      "intervalFlightHours": 300,
+      "calendarLimitDays": 360,
+      "childTasks": 164,
+      "totalChildTasks": 164,
+      "averageManHoursPerTask": 0.3049,
+      "manHours": 50.0,
+      "currentNote": "Progressive LM/Hangar",
+      "taskTitle": "300 HOURS - PART B",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "600-hour",
+      "taskCard": "B412-MPDI-05-600B",
+      "intervalText": "600 HOURS OR 12 MONTHS",
+      "intervalFlightHours": 600,
+      "calendarLimitDays": 360,
+      "childTasks": 62,
+      "totalChildTasks": 62,
+      "averageManHoursPerTask": 1.7742,
+      "manHours": 110.0,
+      "currentNote": "Progressive LM/Hangar",
+      "taskTitle": "600 HOURS - PART B",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "5000-hour",
+      "taskCard": "B412-MPDI-05-5000B",
+      "intervalText": "5000 HOURS OR 5 YEARS",
+      "intervalFlightHours": 5000,
+      "calendarLimitDays": 1825,
+      "childTasks": 75,
+      "totalChildTasks": 75,
+      "averageManHoursPerTask": 9.3333,
+      "manHours": 700.0,
+      "currentNote": "Package",
+      "taskTitle": "5000 HOURS - PART B",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "CSSD 25-hour",
+      "taskCard": "B412-MPDI-05-CSSD-25",
+      "intervalText": "25 HOURS OR 30 DAYS",
+      "intervalFlightHours": 25,
+      "calendarLimitDays": 30,
+      "childTasks": 69,
+      "totalChildTasks": 69,
+      "averageManHoursPerTask": 0.2174,
+      "manHours": 15.0,
+      "currentNote": "Package",
+      "taskTitle": "25 HOURS CORROSION",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    },
+    {
+      "parentPackage": "CSSD 100-hour",
+      "taskCard": "B412-MPDI-05-CSSD-100",
+      "intervalText": "100 HOURS OR 90 DAYS",
+      "intervalFlightHours": 100,
+      "calendarLimitDays": 90,
+      "childTasks": 94,
+      "totalChildTasks": 94,
+      "averageManHoursPerTask": 0.3404,
+      "manHours": 32.0,
+      "currentNote": "Package",
+      "taskTitle": "100 HOURS CORROSION",
+      "applicability": [
+        "OCA",
+        "OCD"
+      ],
+      "applicabilityLabel": "OCA | OCD"
+    }
+  ],
+  "totals": {
+    "childTasks": 691,
+    "manHours": 937.0
+  }
+};
