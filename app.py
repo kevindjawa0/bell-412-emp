@@ -214,29 +214,43 @@ def render_login_page() -> None:
                 min-height: 100vh;
                 background: #05192E;
                 color: #1E293B;
-                font-family: Inter, "Helvetica Neue", Arial, sans-serif;
+                font-family: Montserrat, "Helvetica Neue", Arial, sans-serif;
             }}
 
-            [data-testid="stAppViewContainer"] > .main {{
-                background: transparent;
+            [data-testid="stAppViewContainer"] {{
+                background: transparent !important;
+                overflow: hidden;
+            }}
+
+            [data-testid="stMain"] {{
+                align-items: flex-start !important;
+                justify-content: flex-start !important;
+                min-height: 100vh;
+                background: transparent !important;
             }}
 
             [data-testid="stToolbar"] {{
                 display: none;
             }}
 
+            [data-testid="stMainBlockContainer"],
             .block-container {{
                 width: clamp(340px, 32vw, 460px) !important;
                 max-width: clamp(340px, 32vw, 460px) !important;
+                min-width: clamp(340px, 32vw, 460px) !important;
                 min-height: 100vh;
                 margin: 0 !important;
                 padding: clamp(150px, 18vh, 190px) clamp(24px, 2.7vw, 40px) clamp(96px, 13vh, 130px) !important;
-                background: linear-gradient(180deg, #FFFFFF 0%, #F5F8FB 100%);
-                box-shadow: 18px 0 54px rgba(5, 25, 46, 0.24);
-                position: relative;
-                z-index: 2;
+                background: linear-gradient(180deg, #FFFFFF 0%, #F5F8FB 100%) !important;
+                box-shadow: 18px 0 54px rgba(5, 25, 46, 0.24) !important;
+                position: relative !important;
+                z-index: 2 !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: center !important;
             }}
 
+            [data-testid="stMainBlockContainer"]::before,
             .block-container::before {{
                 content: "";
                 position: fixed;
@@ -246,6 +260,16 @@ def render_login_page() -> None:
                 height: 6px;
                 background: #0C528A;
                 z-index: 5;
+            }}
+
+            [data-testid="stVerticalBlock"] {{
+                width: 100% !important;
+                gap: 0.5rem !important;
+            }}
+
+            [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {{
+                min-height: calc(100vh - clamp(150px, 18vh, 190px) - clamp(96px, 13vh, 130px)) !important;
+                justify-content: center !important;
             }}
 
             .login-background-panel {{
@@ -327,9 +351,10 @@ def render_login_page() -> None:
             }}
 
             div[data-testid="stForm"] {{
-                border: 0;
-                padding: 0;
-                background: transparent;
+                width: 100% !important;
+                border: 0 !important;
+                padding: 0 !important;
+                background: transparent !important;
             }}
 
             div[data-testid="stTextInput"] label {{
@@ -340,20 +365,50 @@ def render_login_page() -> None:
                 text-transform: uppercase;
             }}
 
-            div[data-testid="stTextInput"] input {{
+            div[data-testid="stTextInputRootElement"] {{
                 height: 46px;
+                min-height: 46px;
+                width: 100%;
                 border: 1px solid rgba(77, 105, 136, 0.44);
                 border-left: 4px solid #0C528A;
                 border-radius: 4px;
                 background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
                 color: #05192E;
                 box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 18px rgba(5, 25, 46, 0.06);
+                transition: border-color 160ms ease, box-shadow 160ms ease, background 160ms ease;
+            }}
+
+            div[data-testid="stTextInputRootElement"]:focus-within {{
+                border-color: #0C528A !important;
+                border-left-color: #F9B515 !important;
+                background: #FFFFFF !important;
+                box-shadow: 0 0 0 3px rgba(12, 82, 138, 0.16), 0 12px 24px rgba(5, 25, 46, 0.1) !important;
+            }}
+
+            div[data-testid="stTextInput"] input {{
+                height: 44px !important;
+                border: 0 !important;
+                background: transparent !important;
+                color: #05192E !important;
+                box-shadow: none !important;
+                font-size: 0.98rem !important;
+                font-weight: 600 !important;
+                padding: 0 14px !important;
             }}
 
             div[data-testid="stTextInput"] input:focus {{
-                border-color: #0C528A;
-                border-left-color: #F9B515;
-                box-shadow: 0 0 0 3px rgba(12, 82, 138, 0.16), 0 12px 24px rgba(5, 25, 46, 0.1);
+                box-shadow: none !important;
+                outline: none !important;
+            }}
+
+            div[data-testid="stTextInputRootElement"] button {{
+                height: 44px !important;
+                width: 40px !important;
+                border: 0 !important;
+                border-left: 1px solid rgba(77, 105, 136, 0.18) !important;
+                border-radius: 0 4px 4px 0 !important;
+                background: #FFFFFF !important;
+                color: #4D6988 !important;
             }}
 
             div[data-testid="stFormSubmitButton"] button {{
@@ -444,6 +499,7 @@ def render_login_page() -> None:
                 .block-container {{
                     width: 100% !important;
                     max-width: 100% !important;
+                    min-width: 100% !important;
                     min-height: 100vh;
                     padding: 32px 22px !important;
                     background: rgba(255, 255, 255, 0.96);
