@@ -19,9 +19,9 @@ APP_DIR = Path(__file__).resolve().parent
 ASSET_DIR = APP_DIR / "assets"
 UTILIZATION_JSON = APP_DIR / "utilization_data.json"
 BASIC_INSPECTION_JSON = APP_DIR / "basic_inspection_data.json"
-LOGIN_AIRCRAFT_IMAGE = ASSET_DIR / "airfast_aircraft.jpg"
-LOGIN_AIRFAST_LOGO = ASSET_DIR / "airfast_logo.png"
-LOGIN_JAWS_LOGO = ASSET_DIR / "jaws_logo.png"
+LOGIN_AIRCRAFT_IMAGE = ASSET_DIR / "airfast_auth_background_portrait.png"
+LOGIN_AIRFAST_LOGO = ASSET_DIR / "airfast_logo_cropped.png"
+LOGIN_JAWS_LOGO = ASSET_DIR / "jaws_login_logo.png"
 AUTH_STATE_KEY = "authenticated"
 
 
@@ -96,11 +96,40 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     styles = read_text_asset("styles.css").replace(
         'url("background_image.png")',
         f'url("{asset_data_uri("background_image.png")}")',
+    ).replace(
+        'url("assets/airfast_auth_background_portrait.png")',
+        f'url("{asset_data_uri("assets/airfast_auth_background_portrait.png")}")',
+    )
+    app_script = read_text_asset("app.js").replace(
+        '"assets/eye_open.png"',
+        json.dumps(asset_data_uri("assets/eye_open.png")),
+    ).replace(
+        '"assets/eye_closed.png"',
+        json.dumps(asset_data_uri("assets/eye_closed.png")),
+    ).replace(
+        "initializeAuthGate();",
+        "if (window.STREAMLIT_AUTHENTICATED) { unlockDashboard(); } else { initializeAuthGate(); }",
     )
 
     utilization_payload = with_embedded_aircraft_images(utilization_payload)
     html = html.replace('src="logo.png"', f'src="{asset_data_uri("logo.png")}"')
     html = html.replace('src="jaws_logo.png"', f'src="{asset_data_uri("jaws_logo.png")}"')
+    html = html.replace(
+        'src="assets/jaws_login_logo.png"',
+        f'src="{asset_data_uri("assets/jaws_login_logo.png")}"',
+    )
+    html = html.replace(
+        'src="assets/airfast_logo_cropped.png"',
+        f'src="{asset_data_uri("assets/airfast_logo_cropped.png")}"',
+    )
+    html = html.replace(
+        'src="assets/airfast_auth_background_portrait.png"',
+        f'src="{asset_data_uri("assets/airfast_auth_background_portrait.png")}"',
+    )
+    html = html.replace(
+        'src="assets/eye_closed.png"',
+        f'src="{asset_data_uri("assets/eye_closed.png")}"',
+    )
     html = html.replace('<link rel="stylesheet" href="styles.css" />', f"<style>{styles}</style>")
     html = html.replace(
         '<script src="utilization_data.js"></script>',
@@ -112,7 +141,7 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     )
     html = html.replace(
         '<script src="app.js"></script>',
-        f"<script>{read_text_asset('app.js')}</script>",
+        f"<script>window.STREAMLIT_AUTHENTICATED = true;</script><script>{app_script}</script>",
     )
     return html
 
@@ -162,7 +191,7 @@ def login_asset_markup(path: Path, alt_text: str, class_name: str) -> str:
 def render_login_page() -> None:
     aircraft_uri = asset_data_uri(LOGIN_AIRCRAFT_IMAGE)
     background_style = (
-        f'background-image: linear-gradient(90deg, rgba(5, 25, 46, 0.2), rgba(5, 25, 46, 0.55)), '
+        f'background-image: linear-gradient(180deg, rgba(5, 25, 46, 0.02), rgba(5, 25, 46, 0.2)), '
         f'url("{aircraft_uri}");'
         if aircraft_uri
         else ""
@@ -197,13 +226,13 @@ def render_login_page() -> None:
             }}
 
             .block-container {{
-                width: clamp(360px, 34vw, 480px) !important;
-                max-width: clamp(360px, 34vw, 480px) !important;
+                width: clamp(340px, 32vw, 460px) !important;
+                max-width: clamp(340px, 32vw, 460px) !important;
                 min-height: 100vh;
                 margin: 0 !important;
-                padding: clamp(32px, 6vh, 62px) clamp(26px, 3vw, 44px) !important;
-                background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
-                box-shadow: 18px 0 60px rgba(5, 25, 46, 0.22);
+                padding: clamp(150px, 18vh, 190px) clamp(24px, 2.7vw, 40px) clamp(96px, 13vh, 130px) !important;
+                background: linear-gradient(180deg, #FFFFFF 0%, #F5F8FB 100%);
+                box-shadow: 18px 0 54px rgba(5, 25, 46, 0.24);
                 position: relative;
                 z-index: 2;
             }}
@@ -213,17 +242,17 @@ def render_login_page() -> None:
                 position: fixed;
                 top: 0;
                 left: 0;
-                width: clamp(360px, 34vw, 480px);
-                height: 8px;
-                background: #F9B515;
+                width: clamp(340px, 32vw, 460px);
+                height: 6px;
+                background: #0C528A;
                 z-index: 5;
             }}
 
             .login-background-panel {{
                 position: fixed;
-                inset: 0 0 0 clamp(360px, 34vw, 480px);
+                inset: 0 0 0 clamp(340px, 32vw, 460px);
                 z-index: 0;
-                background-color: #05192E;
+                background-color: #6D9CD9;
                 background-size: cover;
                 background-position: center;
             }}
@@ -233,8 +262,8 @@ def render_login_page() -> None:
                 position: absolute;
                 inset: 0;
                 background:
-                    linear-gradient(180deg, rgba(5, 25, 46, 0.1) 0%, rgba(5, 25, 46, 0.45) 100%),
-                    linear-gradient(90deg, rgba(5, 25, 46, 0.2) 0%, rgba(5, 25, 46, 0.0) 36%);
+                    linear-gradient(180deg, rgba(5, 25, 46, 0.02) 0%, rgba(5, 25, 46, 0.2) 100%),
+                    linear-gradient(90deg, rgba(5, 25, 46, 0.18) 0%, rgba(5, 25, 46, 0.0) 42%);
             }}
 
             .login-brand-row {{
@@ -256,15 +285,15 @@ def render_login_page() -> None:
             }}
 
             .login-logo-jaws {{
-                width: min(255px, 100%);
-                max-height: 74px;
-                object-fit: contain;
-            }}
-
-            .login-logo-airfast {{
-                width: min(230px, 100%);
-                max-height: 68px;
-                object-fit: contain;
+                position: fixed;
+                top: clamp(22px, 4vh, 40px);
+                left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
+                width: min(360px, 26vw);
+                height: clamp(118px, 14vh, 150px);
+                object-fit: cover;
+                object-position: center;
+                transform: translateX(-50%);
+                z-index: 6;
             }}
 
             .login-logo-placeholder {{
@@ -279,20 +308,11 @@ def render_login_page() -> None:
                 text-align: center;
             }}
 
-            .login-kicker {{
-                margin: 0 0 12px;
-                color: #0C528A;
-                font-size: 0.78rem;
-                font-weight: 800;
-                letter-spacing: 0.18em;
-                text-transform: uppercase;
-            }}
-
             .login-heading {{
                 margin: 0 0 14px;
                 color: #05192E;
-                font-size: clamp(2rem, 4vw, 2.8rem);
-                line-height: 1.05;
+                font-size: clamp(1.9rem, 3.4vw, 2.55rem);
+                line-height: 1.08;
                 font-weight: 800;
                 letter-spacing: 0;
             }}
@@ -314,40 +334,81 @@ def render_login_page() -> None:
 
             div[data-testid="stTextInput"] label {{
                 color: #05192E;
-                font-size: 0.88rem;
+                font-size: 0.8rem;
                 font-weight: 800;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
             }}
 
             div[data-testid="stTextInput"] input {{
-                height: 48px;
-                border: 1px solid rgba(77, 105, 136, 0.32);
-                border-radius: 14px;
-                background: #FFFFFF;
+                height: 46px;
+                border: 1px solid rgba(77, 105, 136, 0.44);
+                border-left: 4px solid #0C528A;
+                border-radius: 4px;
+                background: linear-gradient(180deg, #FFFFFF 0%, #F8FAFC 100%);
                 color: #05192E;
-                box-shadow: 0 8px 24px rgba(5, 25, 46, 0.06);
+                box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8), 0 8px 18px rgba(5, 25, 46, 0.06);
             }}
 
             div[data-testid="stTextInput"] input:focus {{
-                border-color: #F9B515;
-                box-shadow: 0 0 0 3px rgba(249, 181, 21, 0.22);
+                border-color: #0C528A;
+                border-left-color: #F9B515;
+                box-shadow: 0 0 0 3px rgba(12, 82, 138, 0.16), 0 12px 24px rgba(5, 25, 46, 0.1);
             }}
 
             div[data-testid="stFormSubmitButton"] button {{
-                height: 48px;
-                margin-top: 8px;
+                height: 46px;
+                margin-top: 2px;
                 border: 0;
-                border-radius: 14px;
-                background: #F9B515;
-                color: #05192E;
+                border-radius: 4px;
+                background: #0C528A;
+                color: #FFFFFF;
                 font-weight: 900;
                 letter-spacing: 0.04em;
-                box-shadow: 0 18px 30px rgba(249, 181, 21, 0.24);
+                box-shadow: 0 16px 26px rgba(12, 82, 138, 0.24);
             }}
 
             div[data-testid="stFormSubmitButton"] button:hover {{
-                background: #FFC536;
-                color: #05192E;
+                background: #05192E;
+                color: #FFFFFF;
                 border: 0;
+            }}
+
+            .login-partnership {{
+                position: fixed;
+                bottom: clamp(44px, 7vh, 68px);
+                left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                gap: 12px;
+                width: calc(clamp(340px, 32vw, 460px) - clamp(48px, 5.4vw, 80px));
+                color: #4D6988;
+                font-size: 0.78rem;
+                font-weight: 800;
+                letter-spacing: 0.04em;
+                text-transform: uppercase;
+                transform: translateX(-50%);
+                z-index: 6;
+            }}
+
+            .login-partnership img {{
+                width: min(178px, 48%);
+                max-height: 34px;
+                object-fit: contain;
+            }}
+
+            .login-version {{
+                position: fixed;
+                bottom: clamp(14px, 3vh, 24px);
+                left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
+                margin: 0;
+                color: rgba(77, 105, 136, 0.54);
+                font-size: 0.72rem;
+                font-weight: 600;
+                letter-spacing: 0.02em;
+                transform: translateX(-50%);
+                z-index: 6;
             }}
 
             div[data-testid="stAlert"] {{
@@ -401,15 +462,7 @@ def render_login_page() -> None:
 
     st.markdown(
         f"""
-        <div class="login-brand-row">
-            <div class="login-logo-card">
-                {login_asset_markup(LOGIN_JAWS_LOGO, "JAWS logo", "login-logo-jaws")}
-            </div>
-            <div class="login-logo-card">
-                {login_asset_markup(LOGIN_AIRFAST_LOGO, "AIRFAST Indonesia logo", "login-logo-airfast")}
-            </div>
-        </div>
-        <p class="login-kicker">AIRFAST Indonesia</p>
+        {login_asset_markup(LOGIN_JAWS_LOGO, "JAWS logo", "login-logo-jaws")}
         <h1 class="login-heading">Maintenance Planning Dashboard</h1>
         <p class="login-copy">Secure access for aircraft utilization, basic inspection modeling, and equalized maintenance planning.</p>
         """,
@@ -434,6 +487,17 @@ def render_login_page() -> None:
 
     if st.session_state.get("login_error"):
         st.error(st.session_state["login_error"])
+
+    st.markdown(
+        f"""
+        <div class="login-partnership" aria-label="In partnership with Airfast Indonesia">
+            <span>in partnership with</span>
+            {login_asset_markup(LOGIN_AIRFAST_LOGO, "Airfast Indonesia logo", "login-logo-airfast")}
+        </div>
+        <p class="login-version">Beta Version 1.1.0</p>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def render_authenticated_styles() -> None:
