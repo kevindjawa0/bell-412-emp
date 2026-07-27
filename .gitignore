@@ -1,0 +1,29 @@
+# Python environments
+.venv/
+venv/
+env/
+ENV/
+
+# Python cache and tooling output
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Streamlit local secrets
+.streamlit/secrets.toml
+
+# Local confidential workbook inputs
+data/
+*.xlsx
+*.xls
+*.xlsm
+~$*.xls*
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
