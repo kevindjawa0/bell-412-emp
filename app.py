@@ -315,8 +315,8 @@ def render_login_page() -> None:
                 position: fixed;
                 top: clamp(14px, 2.4vh, 24px);
                 left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
-                width: min(300px, 23vw);
-                height: clamp(86px, 11vh, 118px);
+                width: min(360px, 26vw);
+                height: clamp(106px, 12.5vh, 138px);
                 object-fit: cover;
                 object-position: center;
                 transform: translateX(-50%);

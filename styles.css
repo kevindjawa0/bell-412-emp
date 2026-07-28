@@ -70,8 +70,8 @@ body.authenticated .login-screen {
   position: absolute;
   top: clamp(14px, 2.4vh, 24px);
   left: 50%;
-  width: min(300px, 76%);
-  height: clamp(86px, 11vh, 118px);
+  width: min(360px, 84%);
+  height: clamp(106px, 12.5vh, 138px);
   object-fit: cover;
   object-position: center;
   transform: translateX(-50%);
