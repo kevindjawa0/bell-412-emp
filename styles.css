@@ -46,7 +46,8 @@ body.authenticated .login-screen {
 
 .login-screen {
   display: grid;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   grid-template-columns: clamp(340px, 32vw, 460px) minmax(0, 1fr);
   background: var(--accent-dark);
 }
@@ -55,21 +56,22 @@ body.authenticated .login-screen {
   position: relative;
   z-index: 2;
   display: flex;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   flex-direction: column;
   justify-content: center;
   border-top: 6px solid #0c528a;
   background: linear-gradient(180deg, #ffffff 0%, #f5f8fb 100%);
   box-shadow: 18px 0 54px rgba(5, 25, 46, 0.24);
-  padding: clamp(150px, 18vh, 190px) clamp(24px, 2.7vw, 40px) clamp(96px, 13vh, 130px);
+  padding: clamp(96px, 11vh, 128px) clamp(24px, 2.7vw, 40px) clamp(68px, 8vh, 88px);
 }
 
 .login-jaws-logo {
   position: absolute;
-  top: clamp(22px, 4vh, 40px);
+  top: clamp(14px, 2.4vh, 24px);
   left: 50%;
-  width: min(360px, 84%);
-  height: clamp(118px, 14vh, 150px);
+  width: min(300px, 76%);
+  height: clamp(86px, 11vh, 118px);
   object-fit: cover;
   object-position: center;
   transform: translateX(-50%);
@@ -80,9 +82,9 @@ body.authenticated .login-screen {
 }
 
 .login-copy h1 {
-  margin: 0 0 14px;
+  margin: 0 0 12px;
   color: var(--accent-dark);
-  font-size: clamp(1.9rem, 3.4vw, 2.55rem);
+  font-size: clamp(1.75rem, 2.75vw, 2.35rem);
   font-weight: 800;
   line-height: 1.08;
   letter-spacing: 0;
@@ -93,7 +95,7 @@ body.authenticated .login-screen {
   color: var(--muted);
   font-size: 1rem;
   font-weight: 500;
-  line-height: 1.65;
+  line-height: 1.55;
 }
 
 .login-form {
@@ -112,7 +114,7 @@ body.authenticated .login-screen {
 
 .login-form input,
 .password-field input {
-  height: 46px;
+  height: 42px;
   width: 100%;
   border: 1px solid rgba(77, 105, 136, 0.44);
   border-radius: 4px;
@@ -183,7 +185,7 @@ body.authenticated .login-screen {
 
 .login-partnership {
   position: absolute;
-  bottom: clamp(44px, 7vh, 68px);
+  bottom: clamp(34px, 5vh, 48px);
   left: 50%;
   display: flex;
   align-items: center;
@@ -206,7 +208,7 @@ body.authenticated .login-screen {
 
 .login-version {
   position: absolute;
-  bottom: clamp(14px, 3vh, 24px);
+  bottom: clamp(10px, 2vh, 16px);
   left: 50%;
   margin: 0;
   color: rgba(77, 105, 136, 0.54);
@@ -240,7 +242,7 @@ body.authenticated .login-screen {
 
 .login-button {
   width: 100%;
-  min-height: 46px;
+  min-height: 42px;
   margin-top: 2px;
   box-shadow: 0 16px 26px rgba(12, 82, 138, 0.24);
 }
@@ -273,7 +275,8 @@ body.authenticated .login-screen {
 
 .login-visual {
   position: relative;
-  min-height: 100vh;
+  min-height: 100dvh;
+  height: 100dvh;
   overflow: hidden;
   background: linear-gradient(180deg, #6d9cd9 0%, #b9c9e2 100%);
 }
@@ -299,7 +302,7 @@ body.authenticated .login-screen {
   z-index: 0;
   width: 100%;
   height: 100%;
-  min-height: 100vh;
+  min-height: 100dvh;
   object-fit: cover;
   object-position: center;
   filter: saturate(1.02) contrast(1.02);
@@ -1527,7 +1530,7 @@ body.image-preview-open {
   }
 
   .login-panel {
-    min-height: 100vh;
+    min-height: 100dvh;
     background: rgba(255, 255, 255, 0.96);
     backdrop-filter: blur(14px);
   }

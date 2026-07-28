@@ -205,16 +205,22 @@ def render_login_page() -> None:
     st.markdown(
         f"""
         <style>
+            html,
+            body {{
+                overflow: hidden;
+            }}
+
             #MainMenu, footer, header, [data-testid="stSidebar"] {{
                 visibility: hidden;
                 display: none;
             }}
 
             .stApp {{
-                min-height: 100vh;
+                min-height: 100dvh;
                 background: #05192E;
                 color: #1E293B;
                 font-family: Montserrat, "Helvetica Neue", Arial, sans-serif;
+                overflow: hidden;
             }}
 
             [data-testid="stAppViewContainer"] {{
@@ -225,7 +231,7 @@ def render_login_page() -> None:
             [data-testid="stMain"] {{
                 align-items: flex-start !important;
                 justify-content: flex-start !important;
-                min-height: 100vh;
+                min-height: 100dvh;
                 background: transparent !important;
             }}
 
@@ -238,9 +244,9 @@ def render_login_page() -> None:
                 width: clamp(340px, 32vw, 460px) !important;
                 max-width: clamp(340px, 32vw, 460px) !important;
                 min-width: clamp(340px, 32vw, 460px) !important;
-                min-height: 100vh;
+                min-height: 100dvh;
                 margin: 0 !important;
-                padding: clamp(150px, 18vh, 190px) clamp(24px, 2.7vw, 40px) clamp(96px, 13vh, 130px) !important;
+                padding: clamp(96px, 11vh, 128px) clamp(24px, 2.7vw, 40px) clamp(68px, 8vh, 88px) !important;
                 background: linear-gradient(180deg, #FFFFFF 0%, #F5F8FB 100%) !important;
                 box-shadow: 18px 0 54px rgba(5, 25, 46, 0.24) !important;
                 position: relative !important;
@@ -268,7 +274,7 @@ def render_login_page() -> None:
             }}
 
             [data-testid="stMainBlockContainer"] > [data-testid="stVerticalBlock"] {{
-                min-height: calc(100vh - clamp(150px, 18vh, 190px) - clamp(96px, 13vh, 130px)) !important;
+                min-height: calc(100dvh - clamp(96px, 11vh, 128px) - clamp(68px, 8vh, 88px)) !important;
                 justify-content: center !important;
             }}
 
@@ -310,10 +316,10 @@ def render_login_page() -> None:
 
             .login-logo-jaws {{
                 position: fixed;
-                top: clamp(22px, 4vh, 40px);
+                top: clamp(14px, 2.4vh, 24px);
                 left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
-                width: min(360px, 26vw);
-                height: clamp(118px, 14vh, 150px);
+                width: min(300px, 23vw);
+                height: clamp(86px, 11vh, 118px);
                 object-fit: cover;
                 object-position: center;
                 transform: translateX(-50%);
@@ -333,9 +339,9 @@ def render_login_page() -> None:
             }}
 
             .login-heading {{
-                margin: 0 0 14px;
+                margin: 0 0 12px;
                 color: #05192E;
-                font-size: clamp(1.9rem, 3.4vw, 2.55rem);
+                font-size: clamp(1.75rem, 2.75vw, 2.35rem);
                 line-height: 1.08;
                 font-weight: 800;
                 letter-spacing: 0;
@@ -343,10 +349,10 @@ def render_login_page() -> None:
 
             .login-copy {{
                 max-width: 36rem;
-                margin: 0 0 30px;
+                margin: 0 0 22px;
                 color: #4D6988;
                 font-size: 1rem;
-                line-height: 1.65;
+                line-height: 1.55;
                 font-weight: 500;
             }}
 
@@ -366,8 +372,8 @@ def render_login_page() -> None:
             }}
 
             div[data-testid="stTextInputRootElement"] {{
-                height: 46px;
-                min-height: 46px;
+                height: 42px;
+                min-height: 42px;
                 width: 100%;
                 border: 1px solid rgba(77, 105, 136, 0.44);
                 border-left: 4px solid #0C528A;
@@ -386,7 +392,7 @@ def render_login_page() -> None:
             }}
 
             div[data-testid="stTextInput"] input {{
-                height: 44px !important;
+                height: 40px !important;
                 border: 0 !important;
                 background: transparent !important;
                 color: #05192E !important;
@@ -402,7 +408,7 @@ def render_login_page() -> None:
             }}
 
             div[data-testid="stTextInputRootElement"] button {{
-                height: 44px !important;
+                height: 40px !important;
                 width: 40px !important;
                 border: 0 !important;
                 border-left: 1px solid rgba(77, 105, 136, 0.18) !important;
@@ -412,7 +418,7 @@ def render_login_page() -> None:
             }}
 
             div[data-testid="stFormSubmitButton"] button {{
-                height: 46px;
+                height: 42px;
                 margin-top: 2px;
                 border: 0;
                 border-radius: 4px;
@@ -431,7 +437,7 @@ def render_login_page() -> None:
 
             .login-partnership {{
                 position: fixed;
-                bottom: clamp(44px, 7vh, 68px);
+                bottom: clamp(34px, 5vh, 48px);
                 left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
                 display: flex;
                 align-items: center;
@@ -455,7 +461,7 @@ def render_login_page() -> None:
 
             .login-version {{
                 position: fixed;
-                bottom: clamp(14px, 3vh, 24px);
+                bottom: clamp(10px, 2vh, 16px);
                 left: min(calc(clamp(340px, 32vw, 460px) / 2), 50%);
                 margin: 0;
                 color: rgba(77, 105, 136, 0.54);
