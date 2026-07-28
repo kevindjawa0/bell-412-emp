@@ -125,6 +125,7 @@ const state = {
   section: "data-source",
   equalized: "100",
   simulationView: "quarterly",
+  showEqualizedComparison: false,
   activeDatePicker: null,
   calendarMonth: null,
   selectedRegistrations: utilizationData.aircraft.map((aircraft) => aircraft.registration),
@@ -1713,6 +1714,14 @@ function renderBasicInspectionRows() {
     .join("");
 }
 
+function getEqualizedComparisonText(program, selectedProgram) {
+  if (state.showEqualizedComparison) {
+    return `${program.description} Faded stacked bars show the selected ${selectedProgram.model} Basic Inspection base model for direct comparison.`;
+  }
+
+  return `${program.description} Base model comparison is hidden, so the equalized workload uses a clearer scale and wider bars.`;
+}
+
 function renderEqualizedInspection() {
   const program = equalizedPrograms[state.equalized];
   const selectedProgram = getSelectedMaintenanceProgram();
@@ -1762,17 +1771,22 @@ function renderEqualizedInspection() {
                 )
                 .join("")}
             </div>
+            <button class="comparison-toggle ${state.showEqualizedComparison ? "active" : ""}" data-equalized-comparison type="button" aria-pressed="${state.showEqualizedComparison}">
+              <span class="comparison-toggle-track" aria-hidden="true">
+                <span></span>
+              </span>
+              <span class="comparison-toggle-text">Base comparison ${state.showEqualizedComparison ? "On" : "Off"}</span>
+            </button>
             <div class="inspection-total" aria-label="Equalized simulation totals">
               <span>${simulationMonths}-Month Scenario</span>
               <strong>${formatDecimal(scenario.totalManHours, 1)} Man Hours</strong>
             </div>
           </div>
         </div>
-        <p class="inspection-method">
-          ${program.description} Faded stacked bars show the selected ${selectedProgram.model} Basic Inspection
-          base model for direct comparison.
-        </p>
-        <div class="chart-frame simulation-chart">
+        <p class="inspection-method" data-equalized-method>${getEqualizedComparisonText(program, selectedProgram)}</p>
+        <div class="chart-frame simulation-chart equalized-chart-frame ${
+          state.showEqualizedComparison ? "comparison-on" : "comparison-off"
+        }">
           <canvas id="equalizedChart" aria-label="Equalized maintenance workload chart" role="img"></canvas>
         </div>
       </article>
@@ -1792,6 +1806,36 @@ function renderEqualizedInspection() {
       state.simulationView = button.dataset.simulationView;
       render();
     });
+  });
+
+  document.querySelector("[data-equalized-comparison]")?.addEventListener("click", (event) => {
+    state.showEqualizedComparison = !state.showEqualizedComparison;
+    const button = event.currentTarget;
+    const frame = document.querySelector(".equalized-chart-frame");
+    const method = document.querySelector("[data-equalized-method]");
+    const label = button.querySelector(".comparison-toggle-text");
+
+    button.classList.toggle("active", state.showEqualizedComparison);
+    button.setAttribute("aria-pressed", String(state.showEqualizedComparison));
+
+    if (label) {
+      label.textContent = `Base comparison ${state.showEqualizedComparison ? "On" : "Off"}`;
+    }
+
+    if (method) {
+      method.textContent = getEqualizedComparisonText(program, selectedProgram);
+    }
+
+    if (frame) {
+      frame.classList.toggle("comparison-on", state.showEqualizedComparison);
+      frame.classList.toggle("comparison-off", !state.showEqualizedComparison);
+      frame.classList.remove("is-rescaling");
+      void frame.offsetWidth;
+      frame.classList.add("is-rescaling");
+      window.setTimeout(() => frame.classList.remove("is-rescaling"), 680);
+    }
+
+    renderEqualizedChart(scenario, program);
   });
 
   renderEqualizedChart(scenario, program);
@@ -2113,7 +2157,49 @@ function renderEqualizedChart(scenario, program) {
   const baselineSimulation = buildBaselineSimulation();
   const baselinePeriods = aggregateBaselineSimulation(baselineSimulation, state.simulationView);
   const viewLabel = simulationViews[state.simulationView] || simulationViews.quarterly;
-  const maxPeriodTotal = getSimulationMaxPeriodTotal(baselineSimulation, state.simulationView);
+  const baselineMaxPeriodTotal = getSimulationMaxPeriodTotal(baselineSimulation, state.simulationView);
+  const equalizedMaxPeriodTotal = getSimulationMaxPeriodTotal(scenario, state.simulationView);
+  const maxPeriodTotal = state.showEqualizedComparison
+    ? Math.max(baselineMaxPeriodTotal, equalizedMaxPeriodTotal)
+    : equalizedMaxPeriodTotal;
+
+  if (state.charts.equalized) {
+    state.charts.equalized.destroy();
+    state.charts.equalized = null;
+  }
+
+  const baselineDatasets = state.showEqualizedComparison
+    ? baselineSimulation.blocks.map((block) => ({
+        label: `Base ${block.label}`,
+        legendHidden: true,
+        blockKey: block.key,
+        data: baselinePeriods.map((period) => period.blocks[block.key]),
+        backgroundColor: withOpacity(block.color, 0.16),
+        borderColor: withOpacity(block.color, 0.28),
+        borderWidth: 1,
+        borderRadius: state.simulationView === "yearly" ? 5 : 3,
+        categoryPercentage: state.simulationView === "monthly" ? 0.98 : 0.84,
+        barPercentage: state.simulationView === "monthly" ? 0.96 : 0.84,
+        grouped: false,
+        stack: "base",
+        order: 3
+      }))
+    : [];
+
+  const equalizedCategoryPercentage = state.showEqualizedComparison
+    ? state.simulationView === "monthly"
+      ? 0.78
+      : 0.58
+    : state.simulationView === "monthly"
+    ? 0.92
+    : 0.78;
+  const equalizedBarPercentage = state.showEqualizedComparison
+    ? state.simulationView === "monthly"
+      ? 0.74
+      : 0.58
+    : state.simulationView === "monthly"
+    ? 0.9
+    : 0.74;
 
   state.charts.equalized = new Chart(context, {
     type: "bar",
@@ -2121,21 +2207,7 @@ function renderEqualizedChart(scenario, program) {
     data: {
       labels: periods.map((period) => period.label),
       datasets: [
-        ...baselineSimulation.blocks.map((block) => ({
-          label: `Base ${block.label}`,
-          legendHidden: true,
-          blockKey: block.key,
-          data: baselinePeriods.map((period) => period.blocks[block.key]),
-          backgroundColor: withOpacity(block.color, 0.2),
-          borderColor: withOpacity(block.color, 0.34),
-          borderWidth: 1,
-          borderRadius: state.simulationView === "yearly" ? 5 : 3,
-          categoryPercentage: state.simulationView === "monthly" ? 0.98 : 0.84,
-          barPercentage: state.simulationView === "monthly" ? 0.96 : 0.84,
-          grouped: false,
-          stack: "base",
-          order: 3
-        })),
+        ...baselineDatasets,
         ...scenario.blocks.map((block) => ({
           label: block.label,
           blockKey: block.key,
@@ -2144,8 +2216,8 @@ function renderEqualizedChart(scenario, program) {
           borderColor: block.color,
           borderWidth: 1,
           borderRadius: state.simulationView === "yearly" ? 5 : 3,
-          categoryPercentage: state.simulationView === "monthly" ? 0.78 : 0.58,
-          barPercentage: state.simulationView === "monthly" ? 0.74 : 0.58,
+          categoryPercentage: equalizedCategoryPercentage,
+          barPercentage: equalizedBarPercentage,
           grouped: false,
           stack: "equalized",
           order: 2
@@ -2154,6 +2226,31 @@ function renderEqualizedChart(scenario, program) {
     },
     options: {
       ...defaults,
+      animation: {
+        duration: 620,
+        easing: "easeOutQuart"
+      },
+      transitions: {
+        active: {
+          animation: {
+            duration: 620
+          }
+        },
+        show: {
+          animations: {
+            y: {
+              from: 0
+            }
+          }
+        },
+        hide: {
+          animations: {
+            y: {
+              to: 0
+            }
+          }
+        }
+      },
       layout: {
         padding: {
           top: 30,
@@ -2220,14 +2317,19 @@ function renderEqualizedChart(scenario, program) {
             footer: (items) => {
               const period = periods[items[0].dataIndex];
               const baselinePeriod = baselinePeriods[items[0].dataIndex];
-              return [
+              const lines = [
                 `${program.title} ${viewLabel.toLowerCase()} total: ${formatDecimal(
                   period.totalManHours,
                   1
                 )} Man Hours`,
-                `Base model total: ${formatDecimal(baselinePeriod.totalManHours, 1)} Man Hours`,
                 `Months: ${period.monthRange}`
               ];
+
+              if (state.showEqualizedComparison) {
+                lines.splice(1, 0, `Base model total: ${formatDecimal(baselinePeriod.totalManHours, 1)} Man Hours`);
+              }
+
+              return lines;
             }
           }
         }
@@ -2270,7 +2372,7 @@ function renderEqualizedChart(scenario, program) {
           suggestedMax: maxPeriodTotal ? maxPeriodTotal * 1.2 : undefined,
           title: {
             display: true,
-            text: "Equalized Man Hours",
+            text: state.showEqualizedComparison ? "Equalized vs Base Man Hours" : "Equalized Man Hours",
             color: chartColors.muted,
             font: {
               family: "Montserrat",
