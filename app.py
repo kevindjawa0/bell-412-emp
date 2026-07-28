@@ -106,9 +106,6 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     ).replace(
         '"assets/eye_closed.png"',
         json.dumps(asset_data_uri("assets/eye_closed.png")),
-    ).replace(
-        "initializeAuthGate();",
-        "if (window.STREAMLIT_AUTHENTICATED) { unlockDashboard(); } else { initializeAuthGate(); }",
     )
 
     utilization_payload = with_embedded_aircraft_images(utilization_payload)
@@ -141,7 +138,7 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     )
     html = html.replace(
         '<script src="app.js"></script>',
-        f"<script>window.STREAMLIT_AUTHENTICATED = true;</script><script>{app_script}</script>",
+        f"<script>{app_script}</script>",
     )
     return html
 
@@ -566,6 +563,14 @@ def render_authenticated_styles() -> None:
     st.markdown(
         """
         <style>
+            html,
+            body {
+                height: 100%;
+                margin: 0;
+                overflow: hidden;
+                background: #F5F7FA;
+            }
+
             #MainMenu,
             footer,
             header,
@@ -579,10 +584,13 @@ def render_authenticated_styles() -> None:
             [data-testid="stAppViewContainer"],
             [data-testid="stMain"] {
                 background: #F5F7FA !important;
+                min-height: 100dvh !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
             }
 
             [data-testid="stMain"] {
-                min-height: 100vh;
+                display: block !important;
             }
 
             [data-testid="stMainBlockContainer"],
@@ -591,16 +599,23 @@ def render_authenticated_styles() -> None:
                 max-width: 100% !important;
                 margin: 0 !important;
                 padding: 0 !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
             }
 
             [data-testid="stVerticalBlock"],
             [data-testid="stElementContainer"] {
                 width: 100% !important;
+                height: 100dvh !important;
+                overflow: hidden !important;
             }
 
             iframe {
                 display: block !important;
-                width: 100% !important;
+                position: fixed !important;
+                inset: 0 !important;
+                width: 100vw !important;
+                height: 100dvh !important;
                 border: 0 !important;
             }
         </style>
@@ -642,16 +657,11 @@ def render_main_app() -> None:
     st.iframe(
         build_dashboard_html(utilization_data, basic_inspection_data),
         width="stretch",
-        height=1800,
+        height=1080,
     )
 
 
 def main() -> None:
-    st.session_state.setdefault(AUTH_STATE_KEY, False)
-    if not st.session_state[AUTH_STATE_KEY]:
-        render_login_page()
-        st.stop()
-
     render_main_app()
 
 
