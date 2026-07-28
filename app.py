@@ -560,13 +560,42 @@ def render_authenticated_styles() -> None:
     st.markdown(
         """
         <style>
-            #MainMenu, footer {
+            #MainMenu,
+            footer,
+            header,
+            [data-testid="stSidebar"],
+            [data-testid="stToolbar"] {
                 visibility: hidden;
+                display: none;
             }
 
+            .stApp,
+            [data-testid="stAppViewContainer"],
+            [data-testid="stMain"] {
+                background: #F5F7FA !important;
+            }
+
+            [data-testid="stMain"] {
+                min-height: 100vh;
+            }
+
+            [data-testid="stMainBlockContainer"],
             .block-container {
-                max-width: 100%;
-                padding-top: 1.5rem;
+                width: 100% !important;
+                max-width: 100% !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            [data-testid="stVerticalBlock"],
+            [data-testid="stElementContainer"] {
+                width: 100% !important;
+            }
+
+            iframe {
+                display: block !important;
+                width: 100% !important;
+                border: 0 !important;
             }
         </style>
         """,
@@ -597,43 +626,17 @@ def load_basic_inspection_data(uploaded_file) -> tuple[dict, str]:
 def render_main_app() -> None:
     render_authenticated_styles()
 
-    title_col, logout_col = st.columns([0.78, 0.22], vertical_alignment="center")
-    with title_col:
-        st.title("Equalizing Maintenance Program")
-    with logout_col:
-        if st.button("Logout", use_container_width=True):
-            logout()
-            st.rerun()
-
-    with st.expander("Deployment data inputs", expanded=True):
-        st.caption(
-            "Upload confidential Excel workbooks at runtime. They are processed in memory and do not need to be committed."
-        )
-        utilization_upload = st.file_uploader(
-            "Aircraft utilization workbook",
-            type=["xlsx", "xlsm"],
-            help="Expected columns include Registration, Flight Date, FH, and FC.",
-        )
-        maintenance_upload = st.file_uploader(
-            "Maintenance program workbook",
-            type=["xlsx", "xlsm"],
-            help="Optional. If omitted, the bundled generated basic-inspection snapshot is used.",
-        )
-
     try:
-        utilization_data, utilization_status = load_utilization_data(utilization_upload)
-        basic_inspection_data, basic_status = load_basic_inspection_data(maintenance_upload)
+        utilization_data, _ = load_utilization_data(None)
+        basic_inspection_data, _ = load_basic_inspection_data(None)
     except Exception as exc:
         st.error(f"Workbook processing failed: {exc}")
         st.stop()
 
-    st.caption(utilization_status)
-    st.caption(basic_status)
-
     st.iframe(
         build_dashboard_html(utilization_data, basic_inspection_data),
         width="stretch",
-        height=1300,
+        height=1800,
     )
 
 
