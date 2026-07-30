@@ -362,6 +362,40 @@ const passwordEyeOpenSource = "assets/eye_open.png";
 const passwordEyeClosedSource = "assets/eye_closed.png";
 let dashboardStarted = false;
 
+function getDefaultSelectedRegistrations() {
+  return utilizationData.aircraft.map((aircraft) => aircraft.registration).filter(Boolean);
+}
+
+function resetUtilizationState() {
+  state.selectedRegistrations = getDefaultSelectedRegistrations();
+  utilizationFilter.startDate = utilizationData.validDates[0] || utilizationData.window.start;
+  utilizationFilter.endDate = utilizationData.validDates[utilizationData.validDates.length - 1] || utilizationData.window.end;
+  state.activeDatePicker = null;
+  state.calendarMonth = null;
+  normalizeDateRangeForSelectedAircraft();
+}
+
+function afterNextPaint(callback) {
+  if (typeof window.requestAnimationFrame === "function") {
+    window.requestAnimationFrame(() => window.requestAnimationFrame(callback));
+    return;
+  }
+
+  window.setTimeout(callback, 0);
+}
+
+function syncCurrentViewAfterLayout() {
+  if (state.section === "data-source" && document.getElementById("utilizationKpis")) {
+    updateUtilizationSection();
+    return;
+  }
+
+  Object.values(state.charts).forEach((chart) => {
+    chart.resize();
+    chart.update("none");
+  });
+}
+
 async function hashText(value) {
   if (!window.crypto?.subtle) {
     throw new Error("Password hashing is unavailable in this preview mode.");
@@ -388,7 +422,11 @@ function unlockDashboard() {
 
   if (!dashboardStarted) {
     dashboardStarted = true;
-    render();
+    resetUtilizationState();
+    afterNextPaint(() => {
+      render();
+      afterNextPaint(syncCurrentViewAfterLayout);
+    });
   }
 }
 
