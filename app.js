@@ -752,6 +752,9 @@ function calculateUtilizationWindow() {
 
   const totalFH = aircraft.reduce((sum, aircraftItem) => sum + aircraftItem.totalFH, 0);
   const totalFC = aircraft.reduce((sum, aircraftItem) => sum + aircraftItem.totalFC, 0);
+  const avgFHPerAircraftCalendarDay = aircraft.length
+    ? aircraft.reduce((sum, aircraftItem) => sum + aircraftItem.avgFHPerDay, 0) / aircraft.length
+    : 0;
   const idleAircraftDays = aircraft.reduce((sum, aircraftItem) => sum + aircraftItem.idleDays, 0);
   const idleCalendarDays = Array.from(totalsByDate.values()).filter(
     (day) => day.flightHours === 0 && day.flightCycles === 0
@@ -773,7 +776,7 @@ function calculateUtilizationWindow() {
     kpis: {
       totalFH,
       totalFC,
-      avgFHPerCalendarDay: totalFH / calendarDays,
+      avgFHPerCalendarDay: avgFHPerAircraftCalendarDay,
       avgFHPerFlightCycle: totalFC ? totalFH / totalFC : 0,
       idleAircraftDays,
       idleCalendarDays
@@ -794,7 +797,7 @@ function renderKpiCards(summary) {
       <strong>${formatNumber(kpis.totalFC)}</strong>
     </article>
     <article class="kpi-card">
-      <span>Average Flight Hours / Day</span>
+      <span>Average Flight Hours / Aircraft / Day</span>
       <strong>${formatDecimal(kpis.avgFHPerCalendarDay, 2)}</strong>
     </article>
     <article class="kpi-card">

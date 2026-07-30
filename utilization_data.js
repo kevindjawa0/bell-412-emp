@@ -9,7 +9,7 @@ window.UTILIZATION_DATA = {
   "kpis": {
     "totalFH": 279.4,
     "totalFC": 581,
-    "avgFHPerCalendarDay": 1.32,
+    "avgFHPerCalendarDay": 0.66,
     "avgFHPerFlightCycle": 0.48,
     "idleDaysByAircraft": {
       "PK-OCA": 108,

@@ -127,6 +127,7 @@ def process_utilization(source_file: Path | str | BinaryIO = SOURCE_FILE) -> dic
 
     total_fh = daily_complete["flight_hours"].sum()
     total_fc = daily_complete["flight_cycles"].sum()
+    avg_fh_per_aircraft_calendar_day = aircraft_summary["avg_fh_per_day"].mean()
     combined_daily = (
         daily_complete.groupby("Flight Date")
         .agg(flight_hours=("flight_hours", "sum"), flight_cycles=("flight_cycles", "sum"))
@@ -147,7 +148,7 @@ def process_utilization(source_file: Path | str | BinaryIO = SOURCE_FILE) -> dic
         "kpis": {
             "totalFH": round_number(total_fh, 1),
             "totalFC": int(total_fc),
-            "avgFHPerCalendarDay": round_number(total_fh / len(calendar_days), 2),
+            "avgFHPerCalendarDay": round_number(avg_fh_per_aircraft_calendar_day, 2),
             "avgFHPerFlightCycle": round_number(total_fh / total_fc, 2) if total_fc else 0,
             "idleDaysByAircraft": {
                 row["Registration"]: int(row["idle_days"])
