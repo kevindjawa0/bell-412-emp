@@ -1394,10 +1394,31 @@ td select {
   color: #ffffff;
 }
 
-.primary-button:disabled {
+.secondary-button.danger-action {
+  border-color: rgba(220, 38, 38, 0.34);
+  color: #991b1b;
+}
+
+.secondary-button.danger-action:hover {
+  border-color: #991b1b;
+  background: #991b1b;
+  color: #ffffff;
+}
+
+.primary-button:disabled,
+.secondary-button:disabled {
   cursor: not-allowed;
   border-color: var(--line);
   background: #cbd5e1;
+  color: #64748b;
+  box-shadow: none;
+}
+
+.primary-button:disabled:hover,
+.secondary-button:disabled:hover {
+  border-color: var(--line);
+  background: #cbd5e1;
+  color: #64748b;
 }
 
 .status-badge {

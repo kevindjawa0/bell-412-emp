@@ -1313,6 +1313,14 @@ function renderHeavyCheckSetupSection() {
           <input id="heavyCheckSearch" type="search" value="${escapeHtml(state.heavyCheckSearch)}" placeholder="Search 5000H task master" />
         </label>
         <button class="secondary-button" data-heavy-revalidate type="button">Revalidate</button>
+        <button class="secondary-button danger-action" data-heavy-exclude-errors type="button" ${!blockingErrors ? "disabled" : ""}>
+          Exclude All Errors
+        </button>
+        <button class="secondary-button" data-heavy-clear-exclusions type="button" ${
+          state.heavyCheckDraftTasks.some((task) => task.excluded) ? "" : "disabled"
+        }>
+          Clear Exclusions
+        </button>
         <button class="primary-button" data-heavy-approve type="button" ${!summary.totalTasks ? "disabled" : ""}>
           Approve Task Master
         </button>
@@ -1383,6 +1391,8 @@ function bindHeavyCheckSetupControls() {
   });
 
   document.querySelector("[data-heavy-revalidate]")?.addEventListener("click", revalidateHeavyCheckDraft);
+  document.querySelector("[data-heavy-exclude-errors]")?.addEventListener("click", bulkExcludeHeavyCheckErrors);
+  document.querySelector("[data-heavy-clear-exclusions]")?.addEventListener("click", clearHeavyCheckExclusions);
   document.querySelector("[data-heavy-approve]")?.addEventListener("click", approveHeavyCheckTaskMaster);
 }
 
@@ -1871,6 +1881,36 @@ function updateHeavyCheckTaskField(taskUid, field, value) {
 function revalidateHeavyCheckDraft() {
   state.heavyCheckDraftTasks = validateHeavyCheckTasks(state.heavyCheckDraftTasks);
   state.heavyCheckUploadMessage = "Task master revalidated.";
+  render();
+}
+
+function bulkExcludeHeavyCheckErrors() {
+  const errorTasks = state.heavyCheckDraftTasks.filter((task) => task.validationStatus === "error" && !task.excluded);
+  if (!errorTasks.length) {
+    state.heavyCheckUploadMessage = "There are no unexcluded validation-error rows to bulk exclude.";
+    render();
+    return;
+  }
+
+  state.heavyCheckDraftTasks = state.heavyCheckDraftTasks.map((task) =>
+    task.validationStatus === "error" ? { ...task, excluded: true } : task
+  );
+  state.heavyCheckStatusFilter = "excluded";
+  state.heavyCheckUploadMessage = `Excluded ${formatNumber(errorTasks.length)} validation-error row(s). Review the Excluded filter before approving the task master.`;
+  render();
+}
+
+function clearHeavyCheckExclusions() {
+  const excludedTasks = state.heavyCheckDraftTasks.filter((task) => task.excluded);
+  if (!excludedTasks.length) {
+    state.heavyCheckUploadMessage = "There are no excluded rows to restore.";
+    render();
+    return;
+  }
+
+  state.heavyCheckDraftTasks = state.heavyCheckDraftTasks.map((task) => ({ ...task, excluded: false }));
+  state.heavyCheckStatusFilter = "all";
+  state.heavyCheckUploadMessage = `Restored ${formatNumber(excludedTasks.length)} excluded row(s).`;
   render();
 }
 
