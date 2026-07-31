@@ -12,6 +12,7 @@ from pathlib import Path
 import streamlit as st
 
 from process_basic_inspection import build_basic_inspection_data
+from process_heavy_check import empty_heavy_check_payload
 from process_utilization import process_utilization
 
 
@@ -91,7 +92,7 @@ def with_embedded_aircraft_images(payload: dict) -> dict:
     return data
 
 
-def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
+def build_dashboard_html(utilization_payload: dict, basic_payload: dict, heavy_check_payload: dict | None = None) -> str:
     html = read_text_asset("index.html")
     styles = read_text_asset("styles.css").replace(
         'url("background_image.png")',
@@ -135,6 +136,10 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     html = html.replace(
         '<script src="basic_inspection_data.js"></script>',
         f"<script>window.BASIC_INSPECTION_DATA = {json.dumps(basic_payload)};</script>",
+    )
+    html = html.replace(
+        '<script src="heavy_check_data.js"></script>',
+        f"<script>window.HEAVY_CHECK_DATA = {json.dumps(heavy_check_payload or empty_heavy_check_payload())};</script>",
     )
     html = html.replace(
         '<script src="app.js"></script>',
@@ -650,12 +655,13 @@ def render_main_app() -> None:
     try:
         utilization_data, _ = load_utilization_data(None)
         basic_inspection_data, _ = load_basic_inspection_data(None)
+        heavy_check_data = empty_heavy_check_payload()
     except Exception as exc:
         st.error(f"Workbook processing failed: {exc}")
         st.stop()
 
     st.iframe(
-        build_dashboard_html(utilization_data, basic_inspection_data),
+        build_dashboard_html(utilization_data, basic_inspection_data, heavy_check_data),
         width="stretch",
         height=1080,
     )
