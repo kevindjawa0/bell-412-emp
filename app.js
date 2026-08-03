@@ -134,6 +134,7 @@ const state = {
   maintenancePlanCreated: false,
   equalizationStarted: false,
   ganttCreated: false,
+  ganttGenerated: false,
   ganttDetailLevel: "phase",
   reviewFilters: {
     ata: "all",
@@ -154,6 +155,7 @@ const state = {
   manualPackageAssignments: {},
   latestEqualizationScenario: null,
   ganttInputs: {
+    totalTechnicians: "",
     shifts: 1,
     hoursPerShift: 8,
     productivityFactor: 0.82,
@@ -1755,6 +1757,7 @@ function revalidateHeavyCheckDraft() {
   state.equalizationStarted = false;
   state.equalizationLoading = false;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.latestEqualizationScenario = null;
   state.heavyCheckUploadMessage = "Task master revalidated.";
   render();
@@ -1775,6 +1778,7 @@ function bulkExcludeHeavyCheckErrors() {
   state.equalizationStarted = false;
   state.equalizationLoading = false;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.latestEqualizationScenario = null;
   state.heavyCheckStatusFilter = "excluded";
   state.heavyCheckUploadMessage = `Excluded ${formatNumber(errorTasks.length)} validation-error row(s). Review the Excluded filter before creating the maintenance plan.`;
@@ -1794,6 +1798,7 @@ function clearHeavyCheckExclusions() {
   state.equalizationStarted = false;
   state.equalizationLoading = false;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.latestEqualizationScenario = null;
   state.heavyCheckStatusFilter = "all";
   state.heavyCheckUploadMessage = `Restored ${formatNumber(excludedTasks.length)} excluded row(s).`;
@@ -1819,6 +1824,7 @@ function approveHeavyCheckTaskMaster() {
   state.equalizationStarted = false;
   state.equalizationLoading = false;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.selectedGanttPackage = "P1";
   state.section = "equalized-inspection";
   state.heavyCheckUploadMessage = `Maintenance plan created from ${formatNumber(state.approvedTaskMaster.length)} cleaned 5000-hour task rows.`;
@@ -2242,6 +2248,19 @@ function normalizePlanTrade(trade) {
   return normalized || "OTHER";
 }
 
+function getGanttTechnicianCount(inputs = state.ganttInputs) {
+  const value = Number(inputs.totalTechnicians);
+  return Number.isFinite(value) && value > 0 ? Math.floor(value) : 0;
+}
+
+function hasCompleteGanttInputs() {
+  return (
+    getGanttTechnicianCount() > 0 &&
+    Number(state.ganttInputs.hoursPerShift) > 0 &&
+    Number(state.ganttInputs.productivityFactor) > 0
+  );
+}
+
 function estimateGroundDaysForRows(rows, inputs = state.ganttInputs) {
   if (!rows.length) {
     return 0;
@@ -2251,6 +2270,12 @@ function estimateGroundDaysForRows(rows, inputs = state.ganttInputs) {
     Math.max(0, Number(inputs.shifts) || 0) *
     Math.max(0, Number(inputs.hoursPerShift) || 0) *
     Math.max(0, Number(inputs.productivityFactor) || 0);
+  const totalTechnicians = getGanttTechnicianCount(inputs);
+  if (totalTechnicians > 0 && productiveHoursPerDay > 0) {
+    const totalManHours = rows.reduce((sum, row) => sum + (Number(row.plannedMh) || 0), 0);
+    return totalManHours / (totalTechnicians * productiveHoursPerDay);
+  }
+
   const byTrade = summarizeWorkload(rows, "trade");
   const tradeDurations = byTrade.map((tradeRow) => {
     const trade = normalizePlanTrade(tradeRow.label);
@@ -2608,6 +2633,7 @@ function generateGanttSchedule(scenario, packageName = state.selectedGanttPackag
     Math.max(0, Number(inputs.shifts) || 0) *
     Math.max(0, Number(inputs.hoursPerShift) || 0) *
     Math.max(0, Number(inputs.productivityFactor) || 0);
+  const totalTechnicians = getGanttTechnicianCount(inputs);
   const sortedGroups = Array.from(groups.values()).sort(
     (a, b) => a.sequence - b.sequence || getPhaseRank(a.phase) - getPhaseRank(b.phase) || a.label.localeCompare(b.label)
   );
@@ -2622,20 +2648,9 @@ function generateGanttSchedule(scenario, packageName = state.selectedGanttPackag
     const startDay = previousSequences.length ? Math.max(...previousSequences) : 0;
     const byTrade = summarizeWorkload(group.rows, "trade");
     const mainTrade = normalizePlanTrade(byTrade[0]?.label || group.trade);
-    const tradeDurations = byTrade.map((tradeRow) => {
-      const trade = normalizePlanTrade(tradeRow.label);
-      const personnel = Number(inputs.tradeCapacity[trade] ?? inputs.tradeCapacity.OTHER ?? 0);
-      const denominator = personnel * productiveHoursPerPersonPerDay;
-      return {
-        trade,
-        personnel,
-        durationDays: denominator > 0 ? Math.max(0.1, tradeRow.manHours / denominator) : 0,
-        warning: denominator > 0 ? "" : `No personnel/productive hours available for ${getTradeDisplayLabel(trade)}`
-      };
-    });
-    const durationDays = tradeDurations.length ? Math.max(...tradeDurations.map((item) => item.durationDays), 0) : 0;
-    const mainPersonnel = Number(inputs.tradeCapacity[mainTrade] ?? inputs.tradeCapacity.OTHER ?? 0);
-    const warning = tradeDurations.find((item) => item.warning)?.warning || "";
+    const denominator = totalTechnicians * productiveHoursPerPersonPerDay;
+    const durationDays = denominator > 0 ? Math.max(0.1, group.plannedMh / denominator) : 0;
+    const warning = denominator > 0 ? "" : "Enter technician count and productive working hours before generating the Gantt chart";
     const endDay = startDay + durationDays;
     sequenceFinish.set(sequence, Math.max(sequenceFinish.get(sequence) || 0, endDay));
     schedule.push({
@@ -2649,7 +2664,7 @@ function generateGanttSchedule(scenario, packageName = state.selectedGanttPackag
       endDay,
       durationDays,
       plannedMh: group.plannedMh,
-      assignedPersonnel: mainPersonnel,
+      assignedPersonnel: totalTechnicians,
       productiveHoursPerPersonPerDay,
       sequence: group.sequence === Number.MAX_SAFE_INTEGER ? "" : group.sequence,
       tasks: group.tasks,
@@ -2757,6 +2772,7 @@ function clearGeneratedPlanningState() {
   state.equalizationStarted = false;
   state.equalizationLoading = false;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.latestEqualizationScenario = null;
 }
 
@@ -3758,6 +3774,7 @@ function renderBasicInspection() {
     state.equalizationStarted = false;
     state.equalizationLoading = false;
     state.ganttCreated = false;
+    state.ganttGenerated = false;
     state.latestEqualizationScenario = null;
     state.section = "equalized-inspection";
     render();
@@ -4454,10 +4471,11 @@ function bindExportControls(scenario, schedule = []) {
           "ground-time-assumptions.csv",
           toCsv([
             {
+              techniciansAssigned: getGanttTechnicianCount(),
               shiftsPerDay: state.ganttInputs.shifts,
               hoursPerShift: state.ganttInputs.hoursPerShift,
               productivityFactor: state.ganttInputs.productivityFactor,
-              tradeCapacity: JSON.stringify(state.ganttInputs.tradeCapacity)
+              schedulingBasis: "Total technicians assigned to selected package"
             }
           ])
         );
@@ -4693,6 +4711,7 @@ function startEqualizationWithLoading(percentKey = state.equalized) {
   state.equalizationStarted = false;
   state.equalizationLoading = true;
   state.ganttCreated = false;
+  state.ganttGenerated = false;
   state.latestEqualizationScenario = null;
   state.manualPackageAssignments = {};
   const selectedPlanSnapshot = percentKey;
@@ -4846,6 +4865,7 @@ function renderEqualizedInspection() {
       state.equalizationStarted = false;
       state.equalizationLoading = false;
       state.ganttCreated = false;
+      state.ganttGenerated = false;
       state.latestEqualizationScenario = null;
       state.manualPackageAssignments = {};
       render();
@@ -4875,6 +4895,7 @@ function renderEqualizedInspection() {
 
   document.querySelector("[data-create-gantt]")?.addEventListener("click", () => {
     state.ganttCreated = true;
+    state.ganttGenerated = false;
     state.latestEqualizationScenario = scenario;
     state.section = "inspection-chart";
     render();
@@ -4891,15 +4912,74 @@ function getScenarioForGantt() {
   }
 
   if (state.latestEqualizationScenario?.percentKey === state.equalized) {
-    return state.latestEqualizationScenario;
+    return normalizeScenarioForGantt(state.latestEqualizationScenario);
   }
 
   if (getCleanMaintenanceTasks().length) {
     state.latestEqualizationScenario = buildEqualizationScenarioFromTasks(state.equalized);
-    return state.latestEqualizationScenario;
+    return normalizeScenarioForGantt(state.latestEqualizationScenario);
   }
 
   return null;
+}
+
+function normalizeScenarioForGantt(scenario) {
+  if (!scenario) {
+    return null;
+  }
+
+  if (Array.isArray(scenario.movementRegister) && Array.isArray(scenario.packages)) {
+    return scenario;
+  }
+
+  if (Array.isArray(scenario.months) && Array.isArray(scenario.blocks)) {
+    return buildGanttScenarioFromSimulation(scenario);
+  }
+
+  return null;
+}
+
+function buildGanttScenarioFromSimulation(simulation) {
+  const packageName = simulation.title || "Equalized Workload";
+  const movementRegister = simulation.blocks
+    .map((block, index) => {
+      const plannedMh = simulation.months.reduce((sum, month) => sum + (Number(month.blocks[block.key]) || 0), 0);
+      return {
+        taskUid: `simulation-${block.key}`,
+        taskCardNo: block.key.replace("-hour", " hrs"),
+        description: `${block.label || block.key} workload from the selected equalization simulation`,
+        shortDescription: `${block.key.replace("-hour", " hrs")} workload`,
+        plannedMh,
+        ata: "-",
+        trade: "AP",
+        tradeLabel: getTradeDisplayLabel("AP"),
+        tradeGroupId: block.key,
+        phase: block.key.replace("-hour", " hrs"),
+        taskCode: block.key,
+        sequence: index + 1,
+        finalPackage: packageName
+      };
+    })
+    .filter((row) => row.plannedMh > 0);
+
+  return {
+    ...simulation,
+    packages: [packageName],
+    packageField: "finalPackage",
+    movementRegister,
+    packageSummaries: [
+      {
+        package: packageName,
+        includedTradeGroups: movementRegister.map((row) => row.tradeGroupId).join(", ") || "-",
+        includedTrades: "AP",
+        tasks: movementRegister.length,
+        manHours: movementRegister.reduce((sum, row) => sum + row.plannedMh, 0),
+        estimatedGroundDays: estimateGroundDaysForRows(movementRegister),
+        byTrade: summarizeWorkload(movementRegister, "trade"),
+        byPhase: summarizeWorkload(movementRegister, "phase")
+      }
+    ]
+  };
 }
 
 function getTradesForScenarioPackage(scenario, packageName, packageField = scenario.packageField || "finalPackage") {
@@ -4911,9 +4991,14 @@ function getTradesForScenarioPackage(scenario, packageName, packageField = scena
 }
 
 function renderGanttInputs(scenario) {
-  const trades = getTradesForScenarioPackage(scenario, state.selectedGanttPackage);
   return `
     <div class="form-grid gantt-input-grid">
+      <label class="gantt-technician-input">
+        <span>Technicians Assigned</span>
+        <input data-gantt-input="totalTechnicians" type="number" min="1" step="1" inputmode="numeric" value="${escapeHtml(
+          state.ganttInputs.totalTechnicians
+        )}" placeholder="Enter technician count" />
+      </label>
       <label>
         <span>Working Hours / Day</span>
         <input data-gantt-input="hoursPerShift" type="number" min="0" step="0.5" value="${state.ganttInputs.hoursPerShift}" />
@@ -4922,18 +5007,6 @@ function renderGanttInputs(scenario) {
         <span>Productivity Factor</span>
         <input data-gantt-input="productivityFactor" type="number" min="0" max="1.5" step="0.01" value="${state.ganttInputs.productivityFactor}" />
       </label>
-      ${trades
-        .map(
-          (trade) => `
-            <label>
-              <span>${escapeHtml(getTradeDisplayLabel(trade))}</span>
-              <input data-gantt-trade="${escapeHtml(trade)}" type="number" min="0" step="1" value="${
-                state.ganttInputs.tradeCapacity[trade] ?? state.ganttInputs.tradeCapacity.OTHER ?? 0
-              }" />
-            </label>
-          `
-        )
-        .join("")}
     </div>
   `;
 }
@@ -5069,8 +5142,24 @@ function renderPlotlyResourceLoading(schedule) {
 }
 
 function renderInspectionGantt() {
-  const baselineReady = hasCompleteBaselineManHours() && state.baseModelStarted;
-  const ganttScenario = state.latestEqualizationScenario;
+  const scenario = getScenarioForGantt();
+  if (scenario && !scenario.packages.includes(state.selectedGanttPackage)) {
+    state.selectedGanttPackage = scenario.packages[0];
+  }
+  const ganttInputsReady = hasCompleteGanttInputs();
+  const shouldShowGantt = Boolean(scenario && state.ganttGenerated && ganttInputsReady);
+  const schedule = shouldShowGantt ? generateGanttSchedule(scenario, state.selectedGanttPackage) : [];
+  const totalManHours = schedule.reduce((sum, row) => sum + row.plannedMh, 0);
+  const totalTasks = schedule.reduce((sum, row) => sum + row.tasks, 0);
+  const estimatedDays = schedule.length ? Math.max(...schedule.map((row) => row.endDay), 0) : 0;
+  const byTrade = summarizeWorkload(
+    schedule.map((row) => ({ trade: row.trade, plannedMh: row.plannedMh })),
+    "trade"
+  );
+  const largestTrade = byTrade[0]?.label ? `${getTradeDisplayLabel(byTrade[0].label)} (${formatDecimal(byTrade[0].manHours, 1)} MH)` : "-";
+  const zeroCapacityWarnings = schedule.filter((row) => row.validationMessage);
+  const packageDayComparison = shouldShowGantt ? getPackageGroundDayComparison(scenario) : [];
+
   content.innerHTML = `
     <section class="view-grid">
       <div class="section-header">
@@ -5085,82 +5174,16 @@ function renderInspectionGantt() {
         ${renderMaintenanceProgramSelector()}
       </div>
 
-      ${renderWorkflowSteps(state.ganttCreated ? "gantt" : baselineReady ? "gantt-button" : "start-base")}
-
-      <article class="card workflow-card">
-        <div class="section-header">
-          <div>
-            <p class="card-kicker">Gantt Chart</p>
-            <h3>${state.ganttCreated ? "Gantt Chart Placeholder" : "Create Gantt Charts From Page 3"}</h3>
-          </div>
-          ${
-            ganttScenario
-              ? `<div class="inspection-total"><span>Selected Plan</span><strong>${escapeHtml(ganttScenario.title || "Equalized Plan")}</strong></div>`
-              : ""
-          }
-        </div>
-        ${
-          state.ganttCreated
-            ? `
-              <div class="scope-notice">
-                This page is ready for the Gantt chart algorithm. The current equalized baseline model has been passed from Page 3.
-              </div>
-              ${renderMetricStrip([
-                { label: "Maintenance Program", value: "BELL 412" },
-                { label: "Equalization Plan", value: ganttScenario?.title || "-" },
-                { label: "Manual Baseline Inputs", value: `${formatDecimal(getManualBaselineTotalManHours(), 1)} MH` },
-                { label: "Simulation Window", value: `${formatNumber(simulationMonths)} months` }
-              ])}
-            `
-            : `<div class="warning-box">Start the base model on Page 2, choose an equalization plan on Page 3, then click Create Gantt Charts to open this page.</div>`
-        }
-        <div class="toolbar-row">
-          <button class="secondary-button" data-back-to-equalization type="button">Back to Equalization Planning</button>
-        </div>
-      </article>
-    </section>
-  `;
-
-  bindMaintenanceProgramSelector();
-  document.querySelector("[data-back-to-equalization]")?.addEventListener("click", () => {
-    state.section = "equalized-inspection";
-    render();
-  });
-  return;
-
-  const scenario = getScenarioForGantt();
-  if (scenario && !scenario.packages.includes(state.selectedGanttPackage)) {
-    state.selectedGanttPackage = scenario.packages[0];
-  }
-  const schedule = scenario ? generateGanttSchedule(scenario, state.selectedGanttPackage) : [];
-  const totalManHours = schedule.reduce((sum, row) => sum + row.plannedMh, 0);
-  const totalTasks = schedule.reduce((sum, row) => sum + row.tasks, 0);
-  const estimatedDays = schedule.length ? Math.max(...schedule.map((row) => row.endDay), 0) : 0;
-  const byTrade = summarizeWorkload(
-    schedule.map((row) => ({ trade: row.trade, plannedMh: row.plannedMh })),
-    "trade"
-  );
-  const largestTrade = byTrade[0]?.label ? `${getTradeDisplayLabel(byTrade[0].label)} (${formatDecimal(byTrade[0].manHours, 1)} MH)` : "-";
-  const zeroCapacityWarnings = schedule.filter((row) => row.validationMessage);
-  const packageDayComparison = scenario ? getPackageGroundDayComparison(scenario) : [];
-
-  content.innerHTML = `
-    <section class="view-grid">
-      <div class="section-header">
-        <div>
-          <p class="section-kicker">Page 4</p>
-          <h2>Inspection Gantt & Ground Time</h2>
-        </div>
-      </div>
+      ${renderWorkflowSteps(shouldShowGantt ? "gantt" : scenario ? "gantt-button" : "start-base")}
 
       ${
         scenario
           ? `
-            <article class="card workflow-card">
+            <article class="card workflow-card gantt-setup-card ${shouldShowGantt ? "gantt-setup-complete" : ""}">
               <div class="section-header">
                 <div>
-                  <p class="card-kicker">Step 8 - View Gantt</p>
-                  <h3>Relative-Day Gantt Chart</h3>
+                  <p class="card-kicker">${shouldShowGantt ? "Technician Assumption" : "Step 6 - Set Technician Capacity"}</p>
+                  <h3>${shouldShowGantt ? "Gantt Inputs Confirmed" : "Enter Technician Count Before Generating"}</h3>
                 </div>
                 <div class="tabs compact-tabs" role="tablist" aria-label="Gantt package selector">
                   ${scenario.packages
@@ -5170,73 +5193,97 @@ function renderInspectionGantt() {
                     .join("")}
                 </div>
               </div>
-              ${renderWorkflowSteps("gantt")}
-              <div class="scope-notice">Preliminary ground-time estimate based on planned man-hours, available personnel, phase sequence, and productivity.</div>
+              <div class="scope-notice">Enter the number of technicians assigned to the selected package. The Gantt chart uses total man-hours divided by available productive technician-hours per day.</div>
               ${renderGanttInputs(scenario)}
-              ${zeroCapacityWarnings.length ? `<div class="warning-box">${formatNumber(zeroCapacityWarnings.length)} schedule item(s) cannot calculate duration because a required trade has zero personnel or zero productive hours.</div>` : ""}
-              ${renderMetricStrip([
-                { label: "Selected Package", value: state.selectedGanttPackage },
-                { label: "Total Tasks", value: formatNumber(totalTasks) },
-                { label: "Total Man-Hours", value: `${formatDecimal(totalManHours, 1)} MH` },
-                { label: "Estimated Days", value: `${formatDecimal(estimatedDays, 1)} days` },
-                { label: "Largest Trade Workload", value: largestTrade }
-              ])}
-              <div class="plot-frame" id="ganttChart"></div>
-            </article>
-
-            <article class="card">
-              <div class="section-header">
-                <div>
-                  <p class="card-kicker">Package Comparison</p>
-                  <h3>Estimated Ground Days</h3>
-                </div>
-              </div>
-              <div class="table-wrap compact-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Package</th>
-                      <th>Tasks</th>
-                      <th>Man-Hours</th>
-                      <th>Estimated Days</th>
-                    </tr>
-                  </thead>
-                  <tbody>${renderGroundDayComparisonRows(packageDayComparison)}</tbody>
-                </table>
+              ${ganttInputsReady ? "" : `<div class="warning-box" data-gantt-warning>Enter technician count, working hours, and productivity factor before generating the Gantt chart.</div>`}
+              <div class="toolbar-row gantt-action-row">
+                <button class="primary-button" data-generate-gantt type="button" ${ganttInputsReady ? "" : "disabled"}>
+                  ${shouldShowGantt ? "Regenerate Gantt Chart" : "Generate Gantt Chart"}
+                </button>
+                <button class="secondary-button" data-back-to-equalization type="button">Back to Equalization Planning</button>
               </div>
             </article>
 
-            <article class="card">
-              <div class="section-header">
-                <div>
-                  <p class="card-kicker">Schedule Data</p>
-                  <h3>${state.ganttDetailLevel === "group" ? "Task-Group Schedule" : "Phase-Level Schedule"}</h3>
-                </div>
-                <div class="toolbar-row compact-toolbar">
-                  <button class="secondary-button" data-export="assignments" type="button">Assignments CSV</button>
-                  <button class="secondary-button" data-export="gantt" type="button">Gantt CSV</button>
-                  <button class="secondary-button" data-export="ground-assumptions" type="button">Assumptions CSV</button>
-                </div>
-              </div>
-              <details class="soft-details">
-                <summary>View Detailed Tasks</summary>
-                <div class="table-wrap tall-table">
-                  <table>
-                    <thead>
-                      <tr>
-                        <th>Task Card</th>
-                        <th>Phase</th>
-                        <th>Trade</th>
-                        <th>Trade Group</th>
-                        <th>Man-Hours</th>
-                        <th>Description</th>
-                      </tr>
-                    </thead>
-                    <tbody>${renderGanttTaskRows(scenario)}</tbody>
-                  </table>
-                </div>
-              </details>
-            </article>
+            ${
+              shouldShowGantt
+                ? `
+                  <div class="gantt-generated-reveal">
+                    <article class="card">
+                      <div class="section-header">
+                        <div>
+                          <p class="card-kicker">Step 7 - Generated Gantt</p>
+                          <h3>Relative-Day Gantt Chart</h3>
+                        </div>
+                      </div>
+                      ${zeroCapacityWarnings.length ? `<div class="warning-box">${formatNumber(zeroCapacityWarnings.length)} schedule item(s) cannot calculate duration because technician count or productive hours are missing.</div>` : ""}
+                      ${renderMetricStrip([
+                        { label: "Selected Package", value: state.selectedGanttPackage },
+                        { label: "Technicians Assigned", value: formatNumber(getGanttTechnicianCount()) },
+                        { label: "Total Tasks", value: formatNumber(totalTasks) },
+                        { label: "Total Man-Hours", value: `${formatDecimal(totalManHours, 1)} MH` },
+                        { label: "Estimated Days", value: `${formatDecimal(estimatedDays, 1)} days` },
+                        { label: "Largest Trade Workload", value: largestTrade }
+                      ])}
+                      <div class="plot-frame" id="ganttChart"></div>
+                    </article>
+
+                    <article class="card">
+                      <div class="section-header">
+                        <div>
+                          <p class="card-kicker">Package Comparison</p>
+                          <h3>Estimated Ground Days</h3>
+                        </div>
+                      </div>
+                      <div class="table-wrap compact-table">
+                        <table>
+                          <thead>
+                            <tr>
+                              <th>Package</th>
+                              <th>Tasks</th>
+                              <th>Man-Hours</th>
+                              <th>Estimated Days</th>
+                            </tr>
+                          </thead>
+                          <tbody>${renderGroundDayComparisonRows(packageDayComparison)}</tbody>
+                        </table>
+                      </div>
+                    </article>
+
+                    <article class="card">
+                      <div class="section-header">
+                        <div>
+                          <p class="card-kicker">Schedule Data</p>
+                          <h3>${state.ganttDetailLevel === "group" ? "Task-Group Schedule" : "Phase-Level Schedule"}</h3>
+                        </div>
+                        <div class="toolbar-row compact-toolbar">
+                          <button class="secondary-button" data-export="assignments" type="button">Assignments CSV</button>
+                          <button class="secondary-button" data-export="gantt" type="button">Gantt CSV</button>
+                          <button class="secondary-button" data-export="ground-assumptions" type="button">Assumptions CSV</button>
+                        </div>
+                      </div>
+                      <details class="soft-details">
+                        <summary>View Detailed Tasks</summary>
+                        <div class="table-wrap tall-table">
+                          <table>
+                            <thead>
+                              <tr>
+                                <th>Task Card</th>
+                                <th>Phase</th>
+                                <th>Trade</th>
+                                <th>Trade Group</th>
+                                <th>Man-Hours</th>
+                                <th>Description</th>
+                              </tr>
+                            </thead>
+                            <tbody>${renderGanttTaskRows(scenario)}</tbody>
+                          </table>
+                        </div>
+                      </details>
+                    </article>
+                  </div>
+                `
+                : ""
+            }
           `
           : `<article class="card"><div class="warning-box">Create the Gantt chart from Page 3 first. Select an equalization option, click Start Equalization, then click Create Gantt Chart.</div></article>`
       }
@@ -5244,7 +5291,7 @@ function renderInspectionGantt() {
   `;
 
   bindGanttControls(schedule, scenario);
-  if (scenario) {
+  if (shouldShowGantt) {
     renderPlotlyGantt(schedule);
   }
 }
@@ -5265,11 +5312,18 @@ function bindGanttControls(schedule, scenario) {
   });
 
   document.querySelectorAll("[data-gantt-input]").forEach((input) => {
-    input.addEventListener("change", () => {
-      const key = input.dataset.ganttInput;
-      state.ganttInputs[key] = input.type === "number" ? Number(input.value) : input.value;
-      render();
-    });
+    const syncInput = () => {
+      syncGanttInputElement(input);
+      if (state.ganttGenerated) {
+        state.ganttGenerated = false;
+        render();
+        return;
+      }
+      refreshGanttGenerateStateInDom();
+    };
+
+    input.addEventListener("input", syncInput);
+    input.addEventListener("change", syncInput);
   });
 
   document.querySelectorAll("[data-gantt-trade]").forEach((input) => {
@@ -5279,7 +5333,67 @@ function bindGanttControls(schedule, scenario) {
     });
   });
 
+  document.querySelector("[data-generate-gantt]")?.addEventListener("click", () => {
+    syncGanttInputsFromDom();
+    if (!hasCompleteGanttInputs()) {
+      state.ganttGenerated = false;
+      render();
+      return;
+    }
+
+    state.ganttGenerated = true;
+    render();
+    window.requestAnimationFrame(() => {
+      document.querySelector(".gantt-generated-reveal")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  });
+
+  document.querySelector("[data-back-to-equalization]")?.addEventListener("click", () => {
+    state.section = "equalized-inspection";
+    render();
+  });
+
   bindExportControls(scenario, schedule);
+}
+
+function syncGanttInputElement(input) {
+  const key = input.dataset.ganttInput;
+  if (!key) {
+    return;
+  }
+
+  const value = Number(input.value);
+  if (key === "totalTechnicians") {
+    state.ganttInputs.totalTechnicians = input.value === "" || !Number.isFinite(value) || value <= 0 ? "" : String(Math.floor(value));
+    if (input.value !== state.ganttInputs.totalTechnicians) {
+      input.value = state.ganttInputs.totalTechnicians;
+    }
+    return;
+  }
+
+  state.ganttInputs[key] = input.type === "number" ? (Number.isFinite(value) ? value : 0) : input.value;
+}
+
+function syncGanttInputsFromDom() {
+  document.querySelectorAll("[data-gantt-input]").forEach(syncGanttInputElement);
+}
+
+function refreshGanttGenerateStateInDom() {
+  const ready = hasCompleteGanttInputs();
+  const button = document.querySelector("[data-generate-gantt]");
+  if (button) {
+    button.disabled = !ready;
+    button.textContent = "Generate Gantt Chart";
+  }
+
+  const warning = document.querySelector("[data-gantt-warning]");
+  if (warning && ready) {
+    warning.remove();
+  } else if (!warning && !ready) {
+    document
+      .querySelector(".gantt-action-row")
+      ?.insertAdjacentHTML("beforebegin", `<div class="warning-box" data-gantt-warning>Enter technician count, working hours, and productivity factor before generating the Gantt chart.</div>`);
+  }
 }
 
 function renderPlotlyGantt(schedule) {

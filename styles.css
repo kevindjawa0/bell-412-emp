@@ -1902,6 +1902,41 @@ td select {
 .gantt-input-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+  gap: 14px;
+}
+
+.gantt-setup-card {
+  border-top: 6px solid var(--accent);
+}
+
+.gantt-setup-complete {
+  border-top-color: #16a34a;
+}
+
+.gantt-technician-input {
+  border: 1px solid rgba(12, 82, 138, 0.22);
+  border-left: 6px solid var(--accent);
+  border-radius: var(--radius);
+  background: #f8fbfd;
+  padding: 14px;
+}
+
+.gantt-technician-input input {
+  font-size: 1.35rem;
+  font-weight: 850;
+}
+
+.gantt-action-row {
+  align-items: center;
+  margin-top: 16px;
+  border-top: 1px solid var(--line);
+  padding-top: 16px;
+}
+
+.gantt-generated-reveal {
+  display: grid;
+  gap: 18px;
+  animation: baselineModelReveal 560ms cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 .plot-frame {
