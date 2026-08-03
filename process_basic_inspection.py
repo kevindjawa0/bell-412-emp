@@ -47,7 +47,7 @@ AVERAGE_MAN_HOURS_PER_TASK = {
     "B412-MPDI-05-100B": 0.52,
     "B412-MPDI-05-300B": 0.38,
     "B412-MPDI-05-600B": 1.08,
-    "B412-MPDI-05-5000B": 2.35,
+    "B412-MPDI-05-5000B": 0.0,
     "B412-MPDI-05-CSSD-25": 0.22,
     "B412-MPDI-05-CSSD-100": 0.34,
 }
@@ -57,7 +57,6 @@ CONFIRMED_PACKAGE_MAN_HOURS = {
     "B412-MPDI-05-100B": 24.0,
     "B412-MPDI-05-300B": 50.0,
     "B412-MPDI-05-600B": 110.0,
-    "B412-MPDI-05-5000B": 700.0,
 }
 
 
@@ -263,9 +262,10 @@ def build_basic_inspection_data(workbook_path: Path | str | BinaryIO = WORKBOOK_
         "sourceWorkbook": workbook_name(workbook_path),
         "methodology": (
             "Primary inspection Man Hours use the confirmed package totals supplied for the 25-hour, "
-            "100-hour, 300-hour, 600-hour, and 5000-hour blocks. Corrosion-control CSSD rows retain "
-            "the previous estimating assumption until confirmed Man Hours are supplied. Applicability "
-            "is read from the workbook so OCA and OCD maintenance programs are modeled separately."
+            "100-hour, 300-hour, and 600-hour blocks. The 5000-hour block is supplied by the uploaded "
+            "heavy-check task master and is not estimated from a package-level assumption. Corrosion-control "
+            "CSSD rows retain the previous estimating assumption until confirmed Man Hours are supplied. "
+            "Applicability is read from the workbook so OCA and OCD maintenance programs are modeled separately."
         ),
         "aircraftPrograms": aircraft_programs,
         "parentTasks": default_parent_tasks,

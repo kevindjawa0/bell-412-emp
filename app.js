@@ -21,64 +21,40 @@ const basicInspectionData = window.BASIC_INSPECTION_DATA || {
 
 const maintenanceSchedule = [
   {
-    model: "BELL 412 SP",
+    model: "BELL 412",
     checkType: "Daily / Pre-flight Inspection",
     intervalHours: "Before flight",
     nextDue: "Next operating day"
   },
   {
-    model: "BELL 412 SP",
-    checkType: "50-Hour Inspection",
-    intervalHours: "50 Flight Hours",
-    nextDue: "PK-AFH at 1,900 Flight Hours"
+    model: "BELL 412",
+    checkType: "25-Hour Inspection",
+    intervalHours: "25 Flight Hours",
+    nextDue: "Based on active utilization"
   },
   {
-    model: "BELL 412 SP",
+    model: "BELL 412",
     checkType: "100-Hour Inspection",
     intervalHours: "100 Flight Hours",
-    nextDue: "PK-AFI at 1,800 Flight Hours"
+    nextDue: "Based on active utilization"
   },
   {
-    model: "BELL 412 SP",
+    model: "BELL 412",
     checkType: "300-Hour Inspection",
     intervalHours: "300 Flight Hours",
-    nextDue: "PK-AFH at 2,100 Flight Hours"
+    nextDue: "Based on active utilization"
   },
   {
-    model: "BELL 412 SP",
+    model: "BELL 412",
     checkType: "600-Hour Inspection",
     intervalHours: "600 Flight Hours",
-    nextDue: "PK-AFI at 2,400 Flight Hours"
+    nextDue: "Based on active utilization"
   },
   {
-    model: "BELL 412 EP",
-    checkType: "Daily / Pre-flight Inspection",
-    intervalHours: "Before flight",
-    nextDue: "Next operating day"
-  },
-  {
-    model: "BELL 412 EP",
-    checkType: "50-Hour Inspection",
-    intervalHours: "50 Flight Hours",
-    nextDue: "PK-AFJ at 2,150 Flight Hours"
-  },
-  {
-    model: "BELL 412 EP",
-    checkType: "150-Hour Inspection",
-    intervalHours: "150 Flight Hours",
-    nextDue: "PK-AFK at 2,400 Flight Hours"
-  },
-  {
-    model: "BELL 412 EP",
-    checkType: "300-Hour Inspection",
-    intervalHours: "300 Flight Hours",
-    nextDue: "PK-AFJ at 2,400 Flight Hours"
-  },
-  {
-    model: "BELL 412 EP",
-    checkType: "600-Hour Inspection",
-    intervalHours: "600 Flight Hours",
-    nextDue: "PK-AFK at 2,700 Flight Hours"
+    model: "BELL 412",
+    checkType: "5000-Hour Inspection",
+    intervalHours: "5000 Flight Hours or 5 Years",
+    nextDue: "Based on active utilization"
   }
 ];
 
@@ -87,46 +63,56 @@ const equalizedPrograms = {
     title: "Equalized 50%",
     spreadRatio: 0.5,
     redistributionMode: "staged",
-    equalizedBlockKeys: ["5000-hour"],
-    description:
-      "Attempts to redistribute approximately 50% of engineer-approved movable 5000-hour workload. Core, locked, and unreviewed tasks remain in Core."
+    equalizedBlockKeys: ["300-hour", "600-hour", "5000-hour"],
+    description: "Moves 50% of the 300-hour, 600-hour, and 5000-hour workload into earlier simulation periods."
   },
   "75": {
     title: "Equalized 75%",
     spreadRatio: 0.75,
     redistributionMode: "staged",
-    equalizedBlockKeys: ["5000-hour"],
-    description:
-      "Attempts to redistribute approximately 75% of engineer-approved movable 5000-hour workload without splitting approved groups."
+    equalizedBlockKeys: ["300-hour", "600-hour", "5000-hour"],
+    description: "Moves 75% of the 300-hour, 600-hour, and 5000-hour workload into earlier simulation periods."
   },
   "100": {
     title: "Equalized 100%",
     spreadRatio: 1,
-    equalizedBlockKeys: ["5000-hour"],
-    description:
-      "Attempts to redistribute all engineer-approved movable 5000-hour workload. Work that is Core, locked, conditional without a group, or unreviewed remains in Core."
+    equalizedBlockKeys: "all",
+    description: "Spreads the full baseline workload evenly across the 5-year simulation."
   }
 };
 
-const maintenancePrograms =
-  Array.isArray(basicInspectionData.aircraftPrograms) && basicInspectionData.aircraftPrograms.length
-    ? basicInspectionData.aircraftPrograms
-    : [
-        {
-          key: "OCA",
-          registration: "PK-OCA",
-          model: "BELL 412 SP",
-          parentTasks: basicInspectionData.parentTasks || [],
-          totals: basicInspectionData.totals || { childTasks: 0, manHours: 0 }
-        },
-        {
-          key: "OCD",
-          registration: "PK-OCD",
-          model: "BELL 412 EP",
-          parentTasks: basicInspectionData.parentTasks || [],
-          totals: basicInspectionData.totals || { childTasks: 0, manHours: 0 }
-        }
-      ];
+const baselineIntervalKeys = ["25-hour", "100-hour", "300-hour", "600-hour", "5000-hour"];
+const manualTaskCardIntervalKeys = ["5000-hour"];
+
+function getBell412BaselineTasks() {
+  const sourceTasks =
+    Array.isArray(basicInspectionData.aircraftPrograms) && basicInspectionData.aircraftPrograms.length
+      ? basicInspectionData.aircraftPrograms[0].parentTasks || []
+      : basicInspectionData.parentTasks || [];
+
+  return baselineIntervalKeys
+    .map((intervalKey) => sourceTasks.find((task) => task.parentPackage === intervalKey))
+    .filter(Boolean)
+    .map((task) => ({
+      ...task,
+      applicability: ["BELL 412"],
+      applicabilityLabel: "BELL 412"
+    }));
+}
+
+const bell412BaselineTasks = getBell412BaselineTasks();
+const maintenancePrograms = [
+  {
+    key: "BELL412",
+    registration: "BELL 412",
+    model: "BELL 412",
+    parentTasks: bell412BaselineTasks,
+    totals: {
+      childTasks: bell412BaselineTasks.reduce((total, task) => total + (Number(task.childTasks) || 0), 0),
+      manHours: 0
+    }
+  }
+];
 
 const state = {
   section: "data-source",
@@ -136,16 +122,27 @@ const state = {
   activeDatePicker: null,
   calendarMonth: null,
   selectedRegistrations: utilizationData.aircraft.map((aircraft) => aircraft.registration),
-  selectedMaintenanceProgram: maintenancePrograms[0]?.key || "OCA",
+  selectedMaintenanceProgram: maintenancePrograms[0]?.key || "BELL412",
+  manualIntervalManHours: Object.fromEntries(baselineIntervalKeys.map((intervalKey) => [intervalKey, ""])),
+  manualIntervalTaskCards: Object.fromEntries(manualTaskCardIntervalKeys.map((intervalKey) => [intervalKey, ""])),
+  baseModelStarted: false,
+  baseModelLoading: false,
+  equalizationLoading: false,
   heavyCheckTab: "upload",
   heavyCheckStatusFilter: "all",
   heavyCheckSearch: "",
+  maintenancePlanCreated: false,
+  equalizationStarted: false,
+  ganttCreated: false,
+  ganttDetailLevel: "phase",
   reviewFilters: {
     ata: "all",
     phase: "all",
     trade: "all",
     taskCode: "all",
     movability: "all",
+    confidence: "all",
+    package: "all",
     reviewStatus: "all",
     search: ""
   },
@@ -153,13 +150,10 @@ const state = {
   heavyCheckDraftTasks: heavyCheckData.tasks || [],
   approvedTaskMaster: [],
   reviewedTaskMaster: [],
-  selectedGanttPackage: "Core",
+  selectedGanttPackage: "P1",
   manualPackageAssignments: {},
   latestEqualizationScenario: null,
   ganttInputs: {
-    startDate: new Date().toISOString().slice(0, 10),
-    workingDaysPerWeek: 5,
-    weekendWork: false,
     shifts: 1,
     hoursPerShift: 8,
     productivityFactor: 0.82,
@@ -167,7 +161,11 @@ const state = {
       AP: 4,
       REI: 2,
       SM: 2,
+      P: 1,
       PAINTER: 1,
+      "AP / REI": 2,
+      "AP / SM": 2,
+      "AP / P": 2,
       OTHER: 1
     }
   },
@@ -180,8 +178,8 @@ const utilizationFilter = {
 };
 
 const sectionTitles = {
-  "data-source": "Data Source & Heavy Check Setup",
-  "basic-inspection": "Baseline Heavy Check & Engineering Review",
+  "data-source": "Aircraft Utilization",
+  "basic-inspection": "Baseline Heavy Check",
   "equalized-inspection": "Equalization Planning",
   "inspection-chart": "Inspection Gantt & Ground Time"
 };
@@ -672,6 +670,63 @@ function uniqueValues(rows, key) {
 
 function statusBadge(status, label = status) {
   return `<span class="status-badge ${status}">${escapeHtml(label)}</span>`;
+}
+
+function getTradeDisplayLabel(trade) {
+  const normalized = normalizeTrade(trade) || "OTHER";
+  return tradeLabels[normalized] || normalized;
+}
+
+function getAutomaticMovabilityLabel(value) {
+  const labels = {
+    LIKELY_MOVABLE: "Can Be Moved",
+    CONDITIONAL: "Move Together",
+    LIKELY_CORE: "Must Stay in Heavy Check",
+    UNCERTAIN: "Needs Engineer Review"
+  };
+  return labels[value] || "Needs Engineer Review";
+}
+
+function getEngineeringDecisionLabel(value) {
+  const labels = {
+    UNREVIEWED: "Not Reviewed",
+    MOVABLE: "Approved to Move",
+    CONDITIONAL: "Move Together",
+    CORE: "Keep in Core"
+  };
+  return labels[value] || "Not Reviewed";
+}
+
+function statusBadgeForReviewStatus(status) {
+  if (status === "APPROVED") {
+    return statusBadge("valid", "Approved");
+  }
+  if (status === "REVIEWED") {
+    return statusBadge("warning", "Reviewed");
+  }
+  return statusBadge("neutral", "Not Reviewed");
+}
+
+function statusBadgeForAutoMovability(value) {
+  if (value === "LIKELY_MOVABLE") {
+    return statusBadge("suggested", getAutomaticMovabilityLabel(value));
+  }
+  if (value === "CONDITIONAL") {
+    return statusBadge("warning", getAutomaticMovabilityLabel(value));
+  }
+  if (value === "LIKELY_CORE") {
+    return statusBadge("error", getAutomaticMovabilityLabel(value));
+  }
+  return statusBadge("neutral", getAutomaticMovabilityLabel(value));
+}
+
+function clampText(value, maxLength = 92) {
+  const text = normalizeText(value, false);
+  if (text.length <= maxLength) {
+    return text;
+  }
+
+  return `${text.slice(0, maxLength - 1).trim()}...`;
 }
 
 function downloadTextFile(fileName, content, mimeType = "text/csv;charset=utf-8") {
@@ -1236,164 +1291,11 @@ function renderHeavyCheckValidationRows() {
 }
 
 function renderHeavyCheckSetupSection() {
-  const summary = getValidationSummary();
-  const workbookInfo = state.heavyCheckWorkbookInfo || {
-    sourceFile: heavyCheckData.sourceFile,
-    sourceSheet: heavyCheckData.sourceSheet,
-    sheets: heavyCheckData.sheets || []
-  };
-  const blockingErrors = state.heavyCheckDraftTasks.filter((task) => task.validationStatus === "error" && !task.excluded).length;
-
-  return `
-    <article class="card workflow-card" id="heavyCheckSetup">
-      <div class="section-header">
-        <div>
-          <p class="card-kicker">5000H Workbook Upload</p>
-          <h3>Heavy Check Task Master</h3>
-        </div>
-        <div class="inspection-total">
-          <span>Approved Task Master</span>
-          <strong>${formatNumber(state.approvedTaskMaster.length)} Tasks</strong>
-        </div>
-      </div>
-
-      <div class="scope-notice">
-        Beta equalization scope: 5000-hour / 5-year heavy inspection only. The smaller inspection intervals remain visible as maintenance context and are not used by the task-level equalization algorithm.
-      </div>
-
-      <div class="upload-panel">
-        <label class="file-upload-label">
-          <span>Upload 5000-hour / 5-year workbook</span>
-          <input id="heavyCheckWorkbookInput" type="file" accept=".xlsx,.xlsm,.xls" />
-        </label>
-        <div>
-          <strong>Master sheet required:</strong>
-          <span>${heavyCheckMasterSheetName}</span>
-          <small>Other phase sheets are listed for information only and are not concatenated into the master.</small>
-        </div>
-      </div>
-
-      ${state.heavyCheckUploadMessage ? `<p class="data-note">${escapeHtml(state.heavyCheckUploadMessage)}</p>` : ""}
-      ${
-        workbookInfo.sourceFile
-          ? `<p class="data-note">Source: ${escapeHtml(workbookInfo.sourceFile)} / Sheet: ${escapeHtml(
-              workbookInfo.sourceSheet || heavyCheckMasterSheetName
-            )}</p>`
-          : ""
-      }
-      ${
-        workbookInfo.sheets?.length
-          ? `<details class="soft-details"><summary>Workbook sheets found</summary><p>${escapeHtml(
-              workbookInfo.sheets.join(", ")
-            )}</p></details>`
-          : ""
-      }
-
-      ${renderMetricStrip([
-        { label: "Imported Tasks", value: formatNumber(summary.totalTasks) },
-        { label: "Valid Tasks", value: formatNumber(summary.validTasks) },
-        { label: "Tasks With Errors", value: formatNumber(summary.tasksWithErrors) },
-        { label: "Tasks With Warnings", value: formatNumber(summary.tasksWithWarnings) },
-        { label: "Missing Man-Hours", value: formatNumber(summary.missingManHours) },
-        { label: "Known OCA Man-Hours", value: formatDecimal(summary.knownManHours, 1) },
-        { label: "Known Workload Coverage", value: `${formatDecimal(summary.workloadCoverage, 1)}%` }
-      ])}
-
-      <div class="toolbar-row">
-        <label>
-          <span>Status</span>
-          <select id="heavyCheckStatusFilter">
-            ${["all", "valid", "warning", "error", "excluded"]
-              .map((status) => `<option value="${status}" ${state.heavyCheckStatusFilter === status ? "selected" : ""}>${status}</option>`)
-              .join("")}
-          </select>
-        </label>
-        <label class="grow">
-          <span>Search task cards, descriptions, ATA, trade, or validation messages</span>
-          <input id="heavyCheckSearch" type="search" value="${escapeHtml(state.heavyCheckSearch)}" placeholder="Search 5000H task master" />
-        </label>
-        <button class="secondary-button" data-heavy-revalidate type="button">Revalidate</button>
-        <button class="secondary-button danger-action" data-heavy-exclude-errors type="button" ${!blockingErrors ? "disabled" : ""}>
-          Exclude All Errors
-        </button>
-        <button class="secondary-button" data-heavy-clear-exclusions type="button" ${
-          state.heavyCheckDraftTasks.some((task) => task.excluded) ? "" : "disabled"
-        }>
-          Clear Exclusions
-        </button>
-        <button class="primary-button" data-heavy-approve type="button" ${!summary.totalTasks ? "disabled" : ""}>
-          Approve Task Master
-        </button>
-      </div>
-
-      ${
-        blockingErrors
-          ? `<div class="warning-box">${formatNumber(
-              blockingErrors
-            )} blocking task error(s) must be corrected or explicitly excluded before approval.</div>`
-          : ""
-      }
-
-      <div class="table-wrap tall-table">
-        <table>
-          <thead>
-            <tr>
-              <th>Status</th>
-              <th>Exclude</th>
-              <th>Task Card No</th>
-              <th>ATA</th>
-              <th>Trade</th>
-              <th>Phase</th>
-              <th>Seq</th>
-              <th>OCA Man-Hours</th>
-              <th>Description</th>
-              <th>Validation Message</th>
-            </tr>
-          </thead>
-          <tbody>${renderHeavyCheckValidationRows()}</tbody>
-        </table>
-      </div>
-      <p class="data-note">Showing up to 80 filtered rows for readability. Use search/status filters to narrow the editable review set.</p>
-    </article>
-  `;
+  return "";
 }
 
 function bindHeavyCheckSetupControls() {
-  document.getElementById("heavyCheckWorkbookInput")?.addEventListener("change", (event) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      importHeavyCheckWorkbook(file);
-    }
-  });
-
-  document.getElementById("heavyCheckStatusFilter")?.addEventListener("change", (event) => {
-    state.heavyCheckStatusFilter = event.target.value;
-    render();
-  });
-
-  document.getElementById("heavyCheckSearch")?.addEventListener("input", (event) => {
-    state.heavyCheckSearch = event.target.value;
-    render();
-  });
-
-  document.querySelectorAll("[data-heavy-task]").forEach((input) => {
-    input.addEventListener("change", () => {
-      const taskUid = input.dataset.heavyTask;
-      const field = input.dataset.heavyField;
-      if (field === "excluded") {
-        state.heavyCheckDraftTasks = state.heavyCheckDraftTasks.map((task) =>
-          task.taskUid === taskUid ? { ...task, excluded: input.checked } : task
-        );
-      } else {
-        updateHeavyCheckTaskField(taskUid, field, input.value);
-      }
-    });
-  });
-
-  document.querySelector("[data-heavy-revalidate]")?.addEventListener("click", revalidateHeavyCheckDraft);
-  document.querySelector("[data-heavy-exclude-errors]")?.addEventListener("click", bulkExcludeHeavyCheckErrors);
-  document.querySelector("[data-heavy-clear-exclusions]")?.addEventListener("click", clearHeavyCheckExclusions);
-  document.querySelector("[data-heavy-approve]")?.addEventListener("click", approveHeavyCheckTaskMaster);
+  return;
 }
 
 function renderDataSource() {
@@ -1468,8 +1370,6 @@ function renderDataSource() {
           </div>
         </div>
       </article>
-
-      ${renderHeavyCheckSetupSection()}
     </section>
   `;
 
@@ -1641,6 +1541,29 @@ const heavyCheckFieldMap = {
 const heavyCheckPackages = ["P1", "P2", "P3", "P4", "P5", "Core"];
 const movableOptions = ["UNREVIEWED", "MOVABLE", "CONDITIONAL", "CORE"];
 const reviewStatusOptions = ["PENDING", "REVIEWED", "APPROVED"];
+const automaticMovabilityOptions = ["LIKELY_MOVABLE", "CONDITIONAL", "LIKELY_CORE", "UNCERTAIN"];
+const confidenceOptions = ["HIGH", "MEDIUM", "LOW"];
+const assignmentModes = {
+  automatic: "Automatic Suggestion",
+  approved: "Final Approved Plan"
+};
+const chartBreakdownOptions = {
+  total: "Total Man-Hours",
+  trade: "Trade",
+  ata: "ATA",
+  phase: "Phase"
+};
+const tradeLabels = {
+  AP: "AP - Airframe & Powerplant",
+  REI: "REI - Radio, Electrical & Instrument",
+  SM: "SM - Sheet Metal",
+  P: "P - Painter",
+  PAINTER: "P - Painter",
+  "AP / REI": "AP / REI - Joint AP and REI",
+  "AP / SM": "AP / SM - Joint AP and Sheet Metal",
+  "AP / P": "AP / P - Joint AP and Painter",
+  OTHER: "Other / Unspecified"
+};
 const phaseOrder = [
   "INDUCTION",
   "DISASSEMBLY",
@@ -1696,6 +1619,15 @@ function normalizeHeavyCheckTask(raw, context) {
     interval: normalizeText(raw.interval, true),
     aircraftRegistration: normalizeAircraftRegistration(raw.aircraftRegistration),
     excluded: false,
+    autoMovability: "",
+    autoConfidence: "",
+    autoReason: "",
+    autoGroupId: "",
+    autoGroupReason: "",
+    autoGroupConfidence: "",
+    proposedPackage: "Core",
+    engineeringDecision: "UNREVIEWED",
+    finalPackage: "Core",
     movability: "UNREVIEWED",
     approvedGroupId: "",
     accessGroup: "",
@@ -1716,6 +1648,7 @@ function normalizeHeavyCheckTask(raw, context) {
 
 function validateHeavyCheckTasks(tasks) {
   const cardCounts = new Map();
+  const allowedTrades = new Set(["AP", "REI", "SM", "P", "PAINTER", "AP / REI", "AP / SM", "AP / P", "OTHER"]);
   tasks.forEach((task) => {
     if (task.taskCardNo) {
       cardCounts.set(task.taskCardNo, (cardCounts.get(task.taskCardNo) || 0) + 1);
@@ -1739,6 +1672,8 @@ function validateHeavyCheckTasks(tasks) {
     if (task.plannedMh === 0) warnings.push("Zero man-hours");
     if (!task.refMm) warnings.push("Missing maintenance-manual reference");
     if (!task.refDmc) warnings.push("Missing DMC reference");
+    if (task.trade === "APP") warnings.push("Trade APP may be inconsistent; review and correct to AP if intended");
+    if (task.trade && task.trade !== "APP" && !allowedTrades.has(task.trade)) warnings.push(`Unknown trade value: ${task.trade}`);
     if (task.trade.includes("/") || task.trade.includes("&")) warnings.push("Combined trade");
     if (/SUMMARY|GENERAL|INSPECTION PROGRAM/i.test(task.description)) warnings.push("Possible summary inspection task");
     if (cardCounts.get(task.taskCardNo) > 1) {
@@ -1756,72 +1691,8 @@ function validateHeavyCheckTasks(tasks) {
   });
 }
 
-function importHeavyCheckWorkbook(file) {
-  if (!window.XLSX) {
-    state.heavyCheckUploadMessage = "Excel parser is unavailable. Check the XLSX CDN connection.";
-    render();
-    return;
-  }
-
-  const reader = new FileReader();
-  reader.onload = (event) => {
-    try {
-      const workbook = XLSX.read(new Uint8Array(event.target.result), { type: "array" });
-      const sheetName = workbook.SheetNames.find((name) => name.trim().toUpperCase() === heavyCheckMasterSheetName);
-      if (!sheetName) {
-        state.heavyCheckUploadMessage = `Master sheet "${heavyCheckMasterSheetName}" was not found. No phase sheets were imported.`;
-        state.heavyCheckDraftTasks = [];
-        render();
-        return;
-      }
-
-      const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: "", blankrows: false });
-      const headerRowIndex = findHeavyCheckHeaderRow(rows);
-      if (headerRowIndex < 0) {
-        state.heavyCheckUploadMessage = "Could not identify the task-card header row in the master sheet.";
-        state.heavyCheckDraftTasks = [];
-        render();
-        return;
-      }
-
-      const headers = rows[headerRowIndex].map((header) => heavyCheckFieldMap[normalizeHeaderKey(header)] || null);
-      const importedTasks = rows.slice(headerRowIndex + 1).flatMap((row, rowIndex) => {
-        const raw = {};
-        headers.forEach((field, index) => {
-          if (field) {
-            raw[field] = row[index];
-          }
-        });
-
-        if (!Object.values(raw).some((value) => normalizeBlank(value))) {
-          return [];
-        }
-
-        return normalizeHeavyCheckTask(raw, {
-          sourceFile: file.name,
-          sourceSheet: sheetName,
-          sourceRow: headerRowIndex + rowIndex + 2
-        });
-      });
-
-      state.heavyCheckDraftTasks = validateHeavyCheckTasks(importedTasks);
-      state.approvedTaskMaster = [];
-      state.reviewedTaskMaster = [];
-      state.manualPackageAssignments = {};
-      state.latestEqualizationScenario = null;
-      state.heavyCheckUploadMessage = `Imported ${formatNumber(importedTasks.length)} task rows from ${sheetName}. Other sheets were listed only and were not duplicated.`;
-      state.heavyCheckWorkbookInfo = {
-        sourceFile: file.name,
-        sourceSheet: sheetName,
-        sheets: workbook.SheetNames
-      };
-      render();
-    } catch (error) {
-      state.heavyCheckUploadMessage = `Workbook import failed: ${error.message}`;
-      render();
-    }
-  };
-  reader.readAsArrayBuffer(file);
+function importHeavyCheckWorkbook() {
+  state.heavyCheckUploadMessage = "Workbook upload has been removed from this dashboard workflow.";
 }
 
 function getValidationSummary(tasks = state.heavyCheckDraftTasks) {
@@ -1880,6 +1751,11 @@ function updateHeavyCheckTaskField(taskUid, field, value) {
 
 function revalidateHeavyCheckDraft() {
   state.heavyCheckDraftTasks = validateHeavyCheckTasks(state.heavyCheckDraftTasks);
+  state.maintenancePlanCreated = false;
+  state.equalizationStarted = false;
+  state.equalizationLoading = false;
+  state.ganttCreated = false;
+  state.latestEqualizationScenario = null;
   state.heavyCheckUploadMessage = "Task master revalidated.";
   render();
 }
@@ -1895,8 +1771,13 @@ function bulkExcludeHeavyCheckErrors() {
   state.heavyCheckDraftTasks = state.heavyCheckDraftTasks.map((task) =>
     task.validationStatus === "error" ? { ...task, excluded: true } : task
   );
+  state.maintenancePlanCreated = false;
+  state.equalizationStarted = false;
+  state.equalizationLoading = false;
+  state.ganttCreated = false;
+  state.latestEqualizationScenario = null;
   state.heavyCheckStatusFilter = "excluded";
-  state.heavyCheckUploadMessage = `Excluded ${formatNumber(errorTasks.length)} validation-error row(s). Review the Excluded filter before approving the task master.`;
+  state.heavyCheckUploadMessage = `Excluded ${formatNumber(errorTasks.length)} validation-error row(s). Review the Excluded filter before creating the maintenance plan.`;
   render();
 }
 
@@ -1909,6 +1790,11 @@ function clearHeavyCheckExclusions() {
   }
 
   state.heavyCheckDraftTasks = state.heavyCheckDraftTasks.map((task) => ({ ...task, excluded: false }));
+  state.maintenancePlanCreated = false;
+  state.equalizationStarted = false;
+  state.equalizationLoading = false;
+  state.ganttCreated = false;
+  state.latestEqualizationScenario = null;
   state.heavyCheckStatusFilter = "all";
   state.heavyCheckUploadMessage = `Restored ${formatNumber(excludedTasks.length)} excluded row(s).`;
   render();
@@ -1917,23 +1803,294 @@ function clearHeavyCheckExclusions() {
 function approveHeavyCheckTaskMaster() {
   const blockingTasks = state.heavyCheckDraftTasks.filter((task) => task.validationStatus === "error" && !task.excluded);
   if (blockingTasks.length) {
-    state.heavyCheckUploadMessage = `${formatNumber(blockingTasks.length)} blocking task error(s) must be corrected or explicitly excluded before approval.`;
+    state.heavyCheckUploadMessage = `${formatNumber(blockingTasks.length)} blocking task error(s) must be corrected or explicitly excluded before creating the maintenance plan.`;
     render();
     return;
   }
 
   state.approvedTaskMaster = state.heavyCheckDraftTasks.filter((task) => !task.excluded);
-  state.reviewedTaskMaster = ensureEngineeringFields(state.approvedTaskMaster);
+  state.reviewedTaskMaster = state.approvedTaskMaster.map((task) => ({
+    ...task,
+    trade: normalizeTrade(task.trade === "APP" ? "AP" : task.trade)
+  }));
   state.manualPackageAssignments = {};
   state.latestEqualizationScenario = null;
-  state.heavyCheckUploadMessage = `Approved ${formatNumber(state.approvedTaskMaster.length)} 5000-hour task-master rows.`;
+  state.maintenancePlanCreated = true;
+  state.equalizationStarted = false;
+  state.equalizationLoading = false;
+  state.ganttCreated = false;
+  state.selectedGanttPackage = "P1";
+  state.section = "equalized-inspection";
+  state.heavyCheckUploadMessage = `Maintenance plan created from ${formatNumber(state.approvedTaskMaster.length)} cleaned 5000-hour task rows.`;
   render();
 }
 
+function getTaskActionWords(task) {
+  const text = `${task.description || ""} ${task.taskCode || ""}`.toUpperCase();
+  const actions = ["REMOVE", "REMOVAL", "INSPECT", "CHECK", "TEST", "REPAIR", "INSTALL", "REASSEMBLE", "CLEAN", "SERVICE", "LUBRICATE", "REPLACE", "CLOSE", "CLOSURE"];
+  return actions.filter((word) => new RegExp(`\\b${word}\\b`, "i").test(text));
+}
+
+function getReferenceFamily(value, tokenCount = 4) {
+  const text = normalizeText(value, true);
+  if (!text) {
+    return "";
+  }
+
+  return text
+    .split(/[-.\s/]+/)
+    .filter(Boolean)
+    .slice(0, tokenCount)
+    .join("-");
+}
+
+function getTaskCodeFamily(value) {
+  const text = normalizeText(value, true);
+  if (!text) {
+    return "";
+  }
+
+  return text
+    .replace(/[^A-Z0-9]+/g, "-")
+    .split("-")
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("-");
+}
+
+function extractComponentTerms(task) {
+  const ignored = new Set([
+    "THE",
+    "AND",
+    "FOR",
+    "WITH",
+    "FROM",
+    "THIS",
+    "THAT",
+    "TASK",
+    "CARD",
+    "SYSTEM",
+    "CHECK",
+    "TEST",
+    "INSPECT",
+    "INSPECTION",
+    "REMOVE",
+    "REMOVAL",
+    "INSTALL",
+    "INSTALLATION",
+    "REPLACE",
+    "REPAIR",
+    "CLEAN",
+    "SERVICE",
+    "SERVICING",
+    "LUBRICATE",
+    "VERIFY",
+    "VISUAL",
+    "GENERAL",
+    "AIRCRAFT",
+    "HELICOPTER",
+    "BELL"
+  ]);
+  const words = `${task.description || ""} ${task.refMm || ""} ${task.refDmc || ""}`
+    .toUpperCase()
+    .replace(/[^A-Z0-9\s-]+/g, " ")
+    .split(/\s+/)
+    .map((word) => word.replace(/^-|-$/g, ""))
+    .filter((word) => word.length >= 4 && !ignored.has(word) && !/^\d+$/.test(word));
+
+  return Array.from(new Set(words)).slice(0, 5);
+}
+
+function classifyHeavyCheckTask(task) {
+  const description = normalizeText(task.description, true);
+  const phase = normalizeText(task.phase, true);
+  const taskCode = normalizeText(task.taskCode, true);
+  const referencesAvailable = Boolean(task.refDmc || task.refMm);
+  const plannedMh = Number(task.plannedMh) || 0;
+  const actionWords = getTaskActionWords(task);
+  const hasFinalDependency =
+    /FINAL\s+(?:GROUND\s+RUN|FUNCTIONAL|REASSEMBLY|ASSEMBLY|CLOSURE|CLOSE|INSPECTION|TEST)/.test(description) ||
+    /\b(?:GROUND\s+RUN|WEIGHT\s+AND\s+BALANCE|COMPASS\s+SWING|FLIGHT\s+TEST|RELEASE\s+TO\s+SERVICE|RETURN\s+TO\s+SERVICE)\b/.test(
+      `${description} ${phase}`
+    );
+  const dependencyWords = /\b(?:ALIGNMENT|CALIBRATION|RIGGING|OPERATIONAL\s+TEST|FUNCTIONAL\s+TEST|LEAK\s+TEST|PRESSURE\s+TEST|FINAL|CLOSURE|CLOSE)\b/.test(
+    `${description} ${phase}`
+  );
+  const standaloneWords = /\b(?:VISUAL|GENERAL|DETAILED|INSPECT|CHECK|CLEAN|CLEANING|SERVICE|SERVICING|LUBRICATE|DRAIN|REPLENISH|FILTER|MINOR)\b/.test(
+    `${description} ${taskCode}`
+  );
+  const chainWords = actionWords.filter((word) => ["REMOVE", "REMOVAL", "INSTALL", "REASSEMBLE", "REPAIR", "TEST"].includes(word));
+
+  if (hasFinalDependency) {
+    return {
+      autoMovability: "LIKELY_CORE",
+      autoConfidence: "HIGH",
+      autoReason: "Suggested to stay in the heavy check because it appears to be a final test, closure, release, or aircraft-level verification task."
+    };
+  }
+
+  if (!description || task.plannedMh == null || plannedMh <= 0) {
+    return {
+      autoMovability: "UNCERTAIN",
+      autoConfidence: "LOW",
+      autoReason: "Needs engineer review because the task has incomplete description or man-hour information."
+    };
+  }
+
+  if (dependencyWords && chainWords.length >= 1) {
+    return {
+      autoMovability: "CONDITIONAL",
+      autoConfidence: referencesAvailable ? "MEDIUM" : "LOW",
+      autoReason: "Suggested to move together because it appears connected to testing, closure, alignment, or reassembly work."
+    };
+  }
+
+  if (chainWords.length >= 2) {
+    return {
+      autoMovability: "CONDITIONAL",
+      autoConfidence: referencesAvailable ? "MEDIUM" : "LOW",
+      autoReason: "Suggested to move together because the wording includes a remove, repair, install, or test chain."
+    };
+  }
+
+  if (standaloneWords && !dependencyWords) {
+    return {
+      autoMovability: "LIKELY_MOVABLE",
+      autoConfidence: referencesAvailable ? "HIGH" : "MEDIUM",
+      autoReason: "Suggested to move because it appears to be a standalone inspection, cleaning, servicing, or minor maintenance task."
+    };
+  }
+
+  if (plannedMh >= 40 && !referencesAvailable) {
+    return {
+      autoMovability: "UNCERTAIN",
+      autoConfidence: "LOW",
+      autoReason: "Needs engineer review because this is a high man-hour task without enough reference information to confirm dependencies."
+    };
+  }
+
+  return {
+    autoMovability: "UNCERTAIN",
+    autoConfidence: referencesAvailable ? "MEDIUM" : "LOW",
+    autoReason: "Needs engineer review because the spreadsheet does not contain enough dependency information for a reliable automatic decision."
+  };
+}
+
+function buildAutomaticGroupKey(task) {
+  const dmcFamily = getReferenceFamily(task.refDmc, 5);
+  const mmFamily = getReferenceFamily(task.refMm, 4);
+  const taskCodeFamily = getTaskCodeFamily(task.taskCode);
+  const component = extractComponentTerms(task).slice(0, 3).join("-");
+  const ataSubsystem = normalizeText(task.ata, true).slice(0, 3);
+  const phaseFamily = getPhaseRank(task.phase);
+  const trade = normalizeTrade(task.trade);
+
+  if (dmcFamily && component) {
+    return {
+      key: `${dmcFamily}::${component}::${trade}`,
+      reason: "Same DMC family, component wording, and compatible trade",
+      confidence: "HIGH"
+    };
+  }
+
+  if (mmFamily && component) {
+    return {
+      key: `${mmFamily}::${component}::${trade}`,
+      reason: "Same maintenance-manual family, component wording, and compatible trade",
+      confidence: "MEDIUM"
+    };
+  }
+
+  if (component && taskCodeFamily) {
+    return {
+      key: `${ataSubsystem}::${taskCodeFamily}::${component}::${phaseFamily}::${trade}`,
+      reason: "Same task-code family, component wording, phase, and trade",
+      confidence: "MEDIUM"
+    };
+  }
+
+  return {
+    key: "",
+    reason: "",
+    confidence: ""
+  };
+}
+
+function buildAutomaticReviewModel(tasks) {
+  const classifiedTasks = tasks.map((task) => {
+    const classification = classifyHeavyCheckTask(task);
+    const existingDecision = task.engineeringDecision || task.movability || "UNREVIEWED";
+
+    return {
+      ...task,
+      ...classification,
+      candidateGroupId: task.candidateGroupId || task.autoGroupId || "",
+      candidateReason: task.candidateReason || task.autoGroupReason || "",
+      candidateConfidence: task.candidateConfidence || task.autoGroupConfidence || "",
+      engineeringDecision: existingDecision,
+      movability: task.movability || existingDecision,
+      finalPackage: task.finalPackage || "Core",
+      proposedPackage: task.proposedPackage || "Core",
+      reviewStatus: task.reviewStatus || "PENDING"
+    };
+  });
+
+  const groupingBuckets = new Map();
+  classifiedTasks.forEach((task) => {
+    if (!["LIKELY_MOVABLE", "CONDITIONAL"].includes(task.autoMovability)) {
+      return;
+    }
+
+    const grouping = buildAutomaticGroupKey(task);
+    if (!grouping.key) {
+      return;
+    }
+
+    const bucket = groupingBuckets.get(grouping.key) || {
+      key: grouping.key,
+      tasks: [],
+      reason: grouping.reason,
+      confidence: grouping.confidence
+    };
+    bucket.tasks.push(task);
+    groupingBuckets.set(grouping.key, bucket);
+  });
+
+  const groups = Array.from(groupingBuckets.values())
+    .filter((bucket) => bucket.tasks.length > 1 && bucket.tasks.length <= 18)
+    .sort((a, b) => b.tasks.reduce((sum, task) => sum + (Number(task.plannedMh) || 0), 0) - a.tasks.reduce((sum, task) => sum + (Number(task.plannedMh) || 0), 0));
+  const groupIdByTask = new Map();
+
+  groups.forEach((group, index) => {
+    const groupId = `AUTO-GRP-${String(index + 1).padStart(3, "0")}`;
+    group.tasks.forEach((task) => {
+      groupIdByTask.set(task.taskUid, {
+        groupId,
+        reason: group.reason,
+        confidence: group.confidence
+      });
+    });
+  });
+
+  return classifiedTasks.map((task) => {
+    const group = groupIdByTask.get(task.taskUid);
+    return {
+      ...task,
+      autoGroupId: group?.groupId || "",
+      autoGroupReason: group?.reason || "",
+      autoGroupConfidence: group?.confidence || "",
+      candidateGroupId: task.candidateGroupId || group?.groupId || "",
+      candidateReason: task.candidateReason || group?.reason || "",
+      candidateConfidence: task.candidateConfidence || group?.confidence || ""
+    };
+  });
+}
+
 function ensureEngineeringFields(tasks) {
-  return tasks.map((task) => ({
+  return buildAutomaticReviewModel(tasks).map((task) => ({
     ...task,
     movability: task.movability || "UNREVIEWED",
+    engineeringDecision: task.engineeringDecision || task.movability || "UNREVIEWED",
     approvedGroupId: task.approvedGroupId || "",
     accessGroup: task.accessGroup || "",
     packageLock: Boolean(task.packageLock),
@@ -1942,7 +2099,9 @@ function ensureEngineeringFields(tasks) {
     reviewStatus: task.reviewStatus || "PENDING",
     candidateGroupId: task.candidateGroupId || "",
     candidateReason: task.candidateReason || "",
-    candidateConfidence: task.candidateConfidence || ""
+    candidateConfidence: task.candidateConfidence || "",
+    finalPackage: task.finalPackage || "Core",
+    proposedPackage: task.proposedPackage || "Core"
   }));
 }
 
@@ -1958,8 +2117,13 @@ function getReviewedTasks() {
   return state.reviewedTaskMaster;
 }
 
+function getReviewedTasksForSelectedProgram() {
+  const program = getSelectedMaintenanceProgram();
+  return getReviewedTasks().filter((task) => heavyCheckTaskAppliesToSelectedProgram(task, program));
+}
+
 function getApprovedHeavyCheckSummary() {
-  const tasks = state.approvedTaskMaster;
+  const tasks = getApprovedHeavyCheckWorkloadForSelectedProgram().tasks;
   return {
     tasks,
     taskCount: tasks.length,
@@ -1985,7 +2149,7 @@ function summarizeWorkload(tasks, key) {
   return Array.from(summary.values()).sort((a, b) => b.manHours - a.manHours);
 }
 
-function filterReviewTasks(tasks = getReviewedTasks()) {
+function filterReviewTasks(tasks = getReviewedTasksForSelectedProgram()) {
   const filters = state.reviewFilters;
   const search = filters.search.trim().toUpperCase();
   return tasks.filter((task) => {
@@ -1994,9 +2158,11 @@ function filterReviewTasks(tasks = getReviewedTasks()) {
       (filters.phase === "all" || task.phase === filters.phase) &&
       (filters.trade === "all" || task.trade === filters.trade) &&
       (filters.taskCode === "all" || task.taskCode === filters.taskCode) &&
-      (filters.movability === "all" || task.movability === filters.movability) &&
+      (filters.movability === "all" || task.autoMovability === filters.movability || task.movability === filters.movability) &&
+      (filters.confidence === "all" || task.autoConfidence === filters.confidence || task.autoGroupConfidence === filters.confidence) &&
+      (filters.package === "all" || task.proposedPackage === filters.package || task.finalPackage === filters.package) &&
       (filters.reviewStatus === "all" || task.reviewStatus === filters.reviewStatus) &&
-      (!search || [task.taskCardNo, task.description, task.refMm, task.refDmc].join(" ").toUpperCase().includes(search))
+      (!search || [task.taskCardNo, task.description, task.refMm, task.refDmc, task.autoGroupId, task.approvedGroupId].join(" ").toUpperCase().includes(search))
     );
   });
 }
@@ -2007,10 +2173,18 @@ function updateReviewTask(taskUid, field, value) {
       return task;
     }
 
-    return {
+    const updated = {
       ...task,
       [field]: field === "packageLock" ? value === "true" || value === true : value
     };
+    if (field === "movability" || field === "engineeringDecision") {
+      updated.movability = value;
+      updated.engineeringDecision = value;
+    }
+    if (field === "finalPackage" && value !== "Core") {
+      updated.reviewStatus = updated.reviewStatus === "PENDING" ? "REVIEWED" : updated.reviewStatus;
+    }
+    return updated;
   });
   state.latestEqualizationScenario = null;
 }
@@ -2023,10 +2197,17 @@ function applyBulkReviewUpdate(field, value) {
 
   state.reviewedTaskMaster = getReviewedTasks().map((task) =>
     selected.has(task.taskUid)
-      ? {
-          ...task,
-          [field]: field === "packageLock" ? value === "true" || value === true : value
-        }
+      ? (() => {
+          const updated = {
+            ...task,
+            [field]: field === "packageLock" ? value === "true" || value === true : value
+          };
+          if (field === "movability" || field === "engineeringDecision") {
+            updated.movability = value;
+            updated.engineeringDecision = value;
+          }
+          return updated;
+        })()
       : task
   );
   state.latestEqualizationScenario = null;
@@ -2034,160 +2215,352 @@ function applyBulkReviewUpdate(field, value) {
 }
 
 function suggestCandidateGroups() {
-  state.reviewedTaskMaster = getReviewedTasks().map((task) => {
-    const dmcFamily = task.refDmc ? task.refDmc.split(/[-.\s]/).slice(0, 4).join("-") : "";
-    const mmFamily = task.refMm ? task.refMm.split(/[-.\s]/).slice(0, 3).join("-") : "";
-    const componentMatch = task.description.match(/\b(?:REMOVE|INSPECT|INSTALL|TEST|CHECK|REPLACE)\b\s+(.{4,36})/i);
-    const component = componentMatch ? componentMatch[1].replace(/[^A-Z0-9 ]/gi, "").trim().slice(0, 24) : "";
-    const family = dmcFamily || mmFamily || `${task.ata}-${component || task.taskCode || task.phase}`;
-    const candidateGroupId = family ? `CAND-${family.toUpperCase().replace(/[^A-Z0-9]+/g, "-").replace(/^-|-$/g, "")}` : "";
-    const candidateReason = dmcFamily
-      ? "Same REF DMC family"
-      : mmFamily
-      ? "Same REF MM family"
-      : component
-      ? "Similar component wording"
-      : "Same ATA / task-code family";
-
-    return {
-      ...task,
-      candidateGroupId,
-      candidateReason,
-      candidateConfidence: dmcFamily || mmFamily ? "Medium" : "Low"
-    };
-  });
+  state.reviewedTaskMaster = buildAutomaticReviewModel(getReviewedTasks());
+  state.latestEqualizationScenario = null;
   render();
 }
 
-function getTaskItemKey(task) {
-  return task.approvedGroupId ? `group:${task.approvedGroupId}` : `task:${task.taskUid}`;
+function getTaskItemKey(task, mode = state.equalizationAssignmentMode) {
+  if (mode === "approved" && task.approvedGroupId) {
+    return `approved-group:${task.approvedGroupId}`;
+  }
+  if (mode === "automatic" && task.autoGroupId) {
+    return `auto-group:${task.autoGroupId}`;
+  }
+  return `task:${task.taskUid}`;
 }
 
-function buildEqualizationScenarioFromTasks(percentKey = state.equalized) {
-  const tasks = getReviewedTasks();
-  const ratio = Number(percentKey) / 100;
-  const baselineWorkload = { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, Core: tasks.reduce((sum, task) => sum + (Number(task.plannedMh) || 0), 0) };
-  const eligibleMap = new Map();
-  const register = [];
-  const assignments = new Map();
+function getPackageFieldForMode(mode) {
+  return mode === "approved" ? "finalPackage" : "proposedPackage";
+}
 
+function normalizePlanTrade(trade) {
+  const normalized = normalizeTrade(trade === "APP" ? "AP" : trade);
+  if (normalized === "PAINTER") {
+    return "P";
+  }
+  return normalized || "OTHER";
+}
+
+function estimateGroundDaysForRows(rows, inputs = state.ganttInputs) {
+  if (!rows.length) {
+    return 0;
+  }
+
+  const productiveHoursPerDay =
+    Math.max(0, Number(inputs.shifts) || 0) *
+    Math.max(0, Number(inputs.hoursPerShift) || 0) *
+    Math.max(0, Number(inputs.productivityFactor) || 0);
+  const byTrade = summarizeWorkload(rows, "trade");
+  const tradeDurations = byTrade.map((tradeRow) => {
+    const trade = normalizePlanTrade(tradeRow.label);
+    const personnel = Number(inputs.tradeCapacity[trade] ?? inputs.tradeCapacity.OTHER ?? 0);
+    const denominator = personnel * productiveHoursPerDay;
+    return denominator > 0 ? tradeRow.manHours / denominator : 0;
+  });
+
+  return tradeDurations.length ? Math.max(...tradeDurations, 0) : 0;
+}
+
+function getCleanMaintenanceTasks() {
+  return getReviewedTasksForSelectedProgram().map((task) => ({
+    ...task,
+    trade: normalizePlanTrade(task.trade),
+    plannedMh: Number(task.plannedMh) || 0
+  }));
+}
+
+function createTradeGroups(tasks, packageLimit = Infinity) {
+  const byTrade = new Map();
   tasks.forEach((task) => {
-    const plannedMh = Number(task.plannedMh) || 0;
-    const isApproved = task.reviewStatus === "APPROVED";
-    const isLocked = Boolean(task.packageLock);
-    const isMovable = task.movability === "MOVABLE" && isApproved && !isLocked;
-    const isConditional = task.movability === "CONDITIONAL" && isApproved && task.approvedGroupId && !isLocked;
-    const eligible = isMovable || isConditional;
-    const itemKey = eligible ? getTaskItemKey(task) : "";
+    const trade = normalizePlanTrade(task.trade);
+    const group = byTrade.get(trade) || { trade, tasks: [], manHours: 0 };
+    group.tasks.push(task);
+    group.manHours += Number(task.plannedMh) || 0;
+    byTrade.set(trade, group);
+  });
 
-    if (eligible) {
-      const existing = eligibleMap.get(itemKey) || {
-        itemKey,
-        approvedGroupId: task.approvedGroupId,
-        tasks: [],
-        manHours: 0
-      };
-      existing.tasks.push(task);
-      existing.manHours += plannedMh;
-      eligibleMap.set(itemKey, existing);
+  return Array.from(byTrade.values())
+    .sort((a, b) => b.manHours - a.manHours)
+    .flatMap((tradeGroup) => splitOversizedTradeGroup(tradeGroup, packageLimit));
+}
+
+function splitOversizedTradeGroup(tradeGroup, packageLimit = Infinity) {
+  if (!Number.isFinite(packageLimit) || tradeGroup.manHours <= packageLimit || packageLimit <= 0) {
+    return [
+      {
+        id: tradeGroup.trade,
+        trade: tradeGroup.trade,
+        tasks: tradeGroup.tasks,
+        manHours: tradeGroup.manHours,
+        split: false,
+        oversizedTask: false
+      }
+    ];
+  }
+
+  const chunks = [];
+  const sortedTasks = [...tradeGroup.tasks].sort((a, b) => (Number(b.plannedMh) || 0) - (Number(a.plannedMh) || 0));
+  sortedTasks.forEach((task) => {
+    const taskMh = Number(task.plannedMh) || 0;
+    const bestChunk = chunks
+      .filter((chunk) => chunk.manHours + taskMh <= packageLimit)
+      .sort((a, b) => a.manHours - b.manHours)[0];
+
+    if (bestChunk) {
+      bestChunk.tasks.push(task);
+      bestChunk.manHours += taskMh;
+    } else {
+      chunks.push({
+        trade: tradeGroup.trade,
+        tasks: [task],
+        manHours: taskMh,
+        oversizedTask: taskMh > packageLimit
+      });
     }
   });
 
-  const eligibleItems = Array.from(eligibleMap.values()).sort((a, b) => b.manHours - a.manHours);
-  const eligibleManHours = eligibleItems.reduce((sum, item) => sum + item.manHours, 0);
-  const targetManHours = eligibleManHours * ratio;
-  const packageWorkload = { P1: 0, P2: 0, P3: 0, P4: 0, P5: 0, Core: baselineWorkload.Core };
-  let redistributedManHours = 0;
+  return chunks.map((chunk, index) => ({
+    ...chunk,
+    id: `${tradeGroup.trade}-${index + 1}`,
+    split: true
+  }));
+}
 
-  eligibleItems.forEach((item) => {
-    const manualPackage = state.manualPackageAssignments[item.itemKey];
-    if (!manualPackage && redistributedManHours >= targetManHours && ratio < 1) {
+function getPackagePlanConfig(percentKey = state.equalized) {
+  return equalizedPrograms[percentKey] || equalizedPrograms["100"];
+}
+
+function calculateStdDev(values) {
+  if (!values.length) {
+    return 0;
+  }
+  const average = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance = values.reduce((sum, value) => sum + (value - average) ** 2, 0) / values.length;
+  return Math.sqrt(variance);
+}
+
+function scorePackageTotals(totals, groups) {
+  const highest = Math.max(...totals, 0);
+  const lowest = Math.min(...totals, 0);
+  const emptyPackages = totals.filter((total) => total <= 0).length;
+  const splitCount = groups.filter((group) => group.split).length;
+  return {
+    range: highest - lowest,
+    stdDev: calculateStdDev(totals),
+    emptyPackages,
+    splitCount
+  };
+}
+
+function isBetterPackageScore(candidate, best) {
+  if (!best) return true;
+  if (candidate.range !== best.range) return candidate.range < best.range;
+  if (candidate.stdDev !== best.stdDev) return candidate.stdDev < best.stdDev;
+  if (candidate.emptyPackages !== best.emptyPackages) return candidate.emptyPackages < best.emptyPackages;
+  return candidate.splitCount < best.splitCount;
+}
+
+function greedyPackageAssignment(groups, packageNames, packageLimit = Infinity) {
+  const packages = packageNames.map((name) => ({ name, groups: [], manHours: 0 }));
+  groups
+    .slice()
+    .sort((a, b) => b.manHours - a.manHours)
+    .forEach((group) => {
+      const candidates = packages
+        .filter((pkg) => !Number.isFinite(packageLimit) || pkg.manHours + group.manHours <= packageLimit || group.oversizedTask)
+        .sort((a, b) => a.manHours - b.manHours);
+      const target = candidates[0] || packages.slice().sort((a, b) => a.manHours - b.manHours)[0];
+      target.groups.push(group);
+      target.manHours += group.manHours;
+    });
+  return packages;
+}
+
+function optimizePackageAssignment(groups, packageNames, packageLimit = Infinity) {
+  const sortedGroups = groups.slice().sort((a, b) => b.manHours - a.manHours);
+  const packageCount = packageNames.length;
+  const current = Array.from({ length: packageCount }, (_, index) => ({
+    name: packageNames[index],
+    groups: [],
+    manHours: 0
+  }));
+  let bestPackages = null;
+  let bestScore = null;
+  let explored = 0;
+  const maxExplored = 220000;
+
+  function snapshotPackages() {
+    return current.map((pkg) => ({
+      name: pkg.name,
+      groups: [...pkg.groups],
+      manHours: pkg.manHours
+    }));
+  }
+
+  function search(index) {
+    if (explored > maxExplored) {
+      return;
+    }
+    explored += 1;
+
+    if (index >= sortedGroups.length) {
+      const totals = current.map((pkg) => pkg.manHours);
+      const score = scorePackageTotals(totals, sortedGroups);
+      if (isBetterPackageScore(score, bestScore)) {
+        bestScore = score;
+        bestPackages = snapshotPackages();
+      }
       return;
     }
 
-    const targetPackage =
-      manualPackage ||
-      ["P1", "P2", "P3", "P4", "P5"].reduce((lowest, pkg) =>
-        packageWorkload[pkg] < packageWorkload[lowest] ? pkg : lowest
-      );
+    const group = sortedGroups[index];
+    const triedTotals = new Set();
 
-    assignments.set(item.itemKey, targetPackage);
-    if (targetPackage !== "Core") {
-      packageWorkload.Core -= item.manHours;
-      packageWorkload[targetPackage] += item.manHours;
-      redistributedManHours += item.manHours;
+    for (let packageIndex = 0; packageIndex < packageCount; packageIndex += 1) {
+      const pkg = current[packageIndex];
+      const roundedTotal = Math.round(pkg.manHours * 100) / 100;
+      if (triedTotals.has(roundedTotal)) {
+        continue;
+      }
+      triedTotals.add(roundedTotal);
+
+      if (Number.isFinite(packageLimit) && pkg.manHours + group.manHours > packageLimit && !group.oversizedTask) {
+        continue;
+      }
+
+      pkg.groups.push(group);
+      pkg.manHours += group.manHours;
+      search(index + 1);
+      pkg.manHours -= group.manHours;
+      pkg.groups.pop();
     }
-  });
+  }
 
-  tasks.forEach((task) => {
-    const itemKey = getTaskItemKey(task);
-    const proposedPackage = assignments.get(itemKey) || "Core";
-    const reason =
-      proposedPackage !== "Core"
-        ? state.manualPackageAssignments[itemKey]
-          ? "Manual package override"
-          : `${percentKey}% greedy load balancing of approved movable workload`
-        : task.packageLock
-        ? "Package locked"
-        : task.movability === "CORE" || task.movability === "UNREVIEWED"
-        ? `${task.movability} tasks remain in Core`
-        : task.movability === "CONDITIONAL" && !task.approvedGroupId
-        ? "Conditional task has no approved group"
-        : "Retained in Core after target workload was reached";
+  search(0);
+  const packages = bestPackages || greedyPackageAssignment(sortedGroups, packageNames, packageLimit);
+  return {
+    packages,
+    optimized: Boolean(bestPackages),
+    explored,
+    stoppedEarly: explored > maxExplored
+  };
+}
 
-    register.push({
-      taskUid: task.taskUid,
-      itemKey,
-      taskCardNo: task.taskCardNo,
-      description: task.description,
-      plannedMh: Number(task.plannedMh) || 0,
-      ata: task.ata,
-      trade: task.trade,
-      phase: task.phase,
-      sequence: task.sequence,
-      movability: task.movability,
-      approvedGroupId: task.approvedGroupId,
-      originalPackage: "Core",
-      proposedPackage,
-      movementReason: reason,
-      reviewStatus: task.reviewStatus,
-      manualOverride: state.manualPackageAssignments[itemKey] || ""
+function applyManualAssignments(packages, packageNames, tasks = getCleanMaintenanceTasks()) {
+  const packageMap = new Map(packageNames.map((name) => [name, { name, groups: [], manHours: 0 }]));
+  const groupMap = new Map();
+  packages.forEach((pkg) => {
+    pkg.groups.forEach((group) => {
+      const manualPackage = state.manualPackageAssignments[`group:${group.id}`] || pkg.name;
+      const targetPackage = packageMap.get(manualPackage) ? manualPackage : pkg.name;
+      groupMap.set(group.id, { ...group, assignedPackage: targetPackage });
     });
   });
 
-  const packageSummaries = heavyCheckPackages.map((pkg) => {
-    const rows = register.filter((row) => row.proposedPackage === pkg);
+  tasks.forEach((task) => {
+    const manualPackage = state.manualPackageAssignments[`task:${task.taskUid}`];
+    if (!manualPackage || !packageMap.has(manualPackage)) {
+      return;
+    }
+    const currentGroup = Array.from(groupMap.values()).find((group) =>
+      group.tasks.some((groupTask) => groupTask.taskUid === task.taskUid)
+    );
+    if (currentGroup) {
+      currentGroup.tasks = currentGroup.tasks.filter((groupTask) => groupTask.taskUid !== task.taskUid);
+      currentGroup.manHours = currentGroup.tasks.reduce((sum, groupTask) => sum + (Number(groupTask.plannedMh) || 0), 0);
+    }
+    const taskGroupId = `TASK-${task.taskUid}`;
+    groupMap.set(taskGroupId, {
+      id: taskGroupId,
+      trade: normalizePlanTrade(task.trade),
+      tasks: [task],
+      manHours: Number(task.plannedMh) || 0,
+      split: true,
+      manualTaskMove: true,
+      assignedPackage: manualPackage
+    });
+  });
+
+  Array.from(groupMap.values())
+    .filter((group) => group.tasks.length)
+    .forEach((group) => {
+      const target = packageMap.get(group.assignedPackage) || packageMap.get(packageNames[0]);
+      target.groups.push(group);
+      target.manHours += group.manHours;
+    });
+
+  return packageNames.map((name) => packageMap.get(name));
+}
+
+function buildEqualizationScenarioFromTasks(percentKey = state.equalized) {
+  const config = getPackagePlanConfig(percentKey);
+  const packageNames = config.packages;
+  const tasks = getCleanMaintenanceTasks();
+  const totalManHours = tasks.reduce((sum, task) => sum + (Number(task.plannedMh) || 0), 0);
+  const packageLimit = percentKey === "100" ? totalManHours / 3 : Infinity;
+  const tradeGroups = createTradeGroups(tasks, packageLimit);
+  const optimization = optimizePackageAssignment(tradeGroups, packageNames, packageLimit);
+  const packages = applyManualAssignments(optimization.packages, packageNames, tasks);
+  const packageTotals = packages.map((pkg) => pkg.manHours);
+  const highestPackageManHours = Math.max(...packageTotals, 0);
+  const lowestPackageManHours = Math.min(...packageTotals, 0);
+  const limitExceeded = percentKey === "100" && packages.some((pkg) => pkg.manHours > packageLimit + 0.0001);
+  const oversizedTaskGroups = tradeGroups.filter((group) => group.oversizedTask);
+  const movementRegister = packages.flatMap((pkg) =>
+    pkg.groups.flatMap((group) =>
+      group.tasks.map((task) => ({
+        taskUid: task.taskUid,
+        taskCardNo: task.taskCardNo,
+        description: task.description,
+        shortDescription: clampText(task.description, 80),
+        plannedMh: Number(task.plannedMh) || 0,
+        ata: task.ata,
+        trade: normalizePlanTrade(task.trade),
+        tradeLabel: getTradeDisplayLabel(normalizePlanTrade(task.trade)),
+        tradeGroupId: group.id,
+        phase: task.phase,
+        taskCode: task.taskCode,
+        sequence: task.sequence,
+        finalPackage: pkg.name
+      }))
+    )
+  );
+  const packageSummaries = packages.map((pkg) => {
+    const rows = movementRegister.filter((row) => row.finalPackage === pkg.name);
     return {
-      package: pkg,
+      package: pkg.name,
+      includedTradeGroups: pkg.groups.map((group) => group.id).join(", ") || "-",
+      includedTrades: Array.from(new Set(pkg.groups.map((group) => group.trade))).join(", ") || "-",
       tasks: rows.length,
       manHours: rows.reduce((sum, row) => sum + row.plannedMh, 0),
-      byAta: summarizeWorkload(rows, "ata"),
+      estimatedGroundDays: estimateGroundDaysForRows(rows),
       byTrade: summarizeWorkload(rows, "trade"),
       byPhase: summarizeWorkload(rows, "phase")
     };
   });
-  const achievedPercent = eligibleManHours ? (redistributedManHours / eligibleManHours) * 100 : 0;
-  const workloads = packageSummaries.map((item) => item.manHours);
-  const average = workloads.reduce((sum, value) => sum + value, 0) / (workloads.length || 1);
-  const variance = workloads.reduce((sum, value) => sum + (value - average) ** 2, 0) / (workloads.length || 1);
 
   return {
     percentKey,
-    requestedPercent: Number(percentKey),
-    eligibleManHours,
-    targetManHours,
-    redistributedManHours,
-    achievedPercent,
-    baselineWorkload,
+    title: config.title,
+    packages: packageNames,
+    packageCount: packageNames.length,
+    packageLimit,
+    totalTasks: tasks.length,
+    totalManHours,
+    tradeGroups,
     packageSummaries,
-    movementRegister: register,
-    movedTasks: register.filter((row) => row.proposedPackage !== "Core").length,
-    movedGroups: new Set(register.filter((row) => row.proposedPackage !== "Core" && row.approvedGroupId).map((row) => row.approvedGroupId)).size,
-    coreTasks: register.filter((row) => row.proposedPackage === "Core").length,
-    unreviewedTasks: tasks.filter((task) => task.movability === "UNREVIEWED").length,
-    workloadStdDev: Math.sqrt(variance),
-    peakBefore: baselineWorkload.Core,
-    peakAfter: Math.max(...workloads, 0)
+    movementRegister,
+    highestPackageManHours,
+    lowestPackageManHours,
+    differenceManHours: highestPackageManHours - lowestPackageManHours,
+    standardDeviation: calculateStdDev(packageTotals),
+    optimized: optimization.optimized,
+    exploredCombinations: optimization.explored,
+    stoppedEarly: optimization.stoppedEarly,
+    limitExceeded,
+    oversizedTaskGroups,
+    packageField: "finalPackage"
   };
 }
 
@@ -2202,30 +2575,21 @@ function getPhaseRank(phase) {
   return fuzzyIndex >= 0 ? fuzzyIndex : phaseOrder.length;
 }
 
-function addWorkingDays(startDate, days, inputs) {
-  const date = new Date(`${startDate}T00:00:00`);
-  let remaining = Math.max(1, Math.ceil(days));
-  while (remaining > 0) {
-    const day = date.getDay();
-    const isWeekend = day === 0 || day === 6;
-    if (inputs.weekendWork || !isWeekend) {
-      remaining -= 1;
-    }
-    if (remaining > 0) {
-      date.setDate(date.getDate() + 1);
-    }
-  }
-  return date.toISOString().slice(0, 10);
-}
-
 function generateGanttSchedule(scenario, packageName = state.selectedGanttPackage) {
   const inputs = state.ganttInputs;
-  const rows = scenario.movementRegister.filter((row) => row.proposedPackage === packageName);
+  const packageField = scenario.packageField || "finalPackage";
+  const rows = scenario.movementRegister.filter((row) => row[packageField] === packageName);
   const groups = new Map();
   rows.forEach((row) => {
-    const key = row.approvedGroupId || `${row.phase || "UNPHASED"}::${row.taskUid}`;
+    const key =
+      state.ganttDetailLevel === "group"
+        ? row.autoGroupId || row.approvedGroupId || `${row.phase || "UNPHASED"}::${row.trade || "OTHER"}::${row.sequence || "SEQ"}`
+        : row.phase || "UNPHASED";
     const existing = groups.get(key) || {
-      label: row.approvedGroupId || row.taskCardNo || key,
+      label:
+        state.ganttDetailLevel === "group" && (row.autoGroupId || row.approvedGroupId)
+          ? row.autoGroupId || row.approvedGroupId
+          : row.phase || row.taskCardNo || key,
       phase: row.phase || "UNPHASED",
       trade: row.trade || "OTHER",
       sequence: Number.MAX_SAFE_INTEGER,
@@ -2240,34 +2604,58 @@ function generateGanttSchedule(scenario, packageName = state.selectedGanttPackag
     groups.set(key, existing);
   });
 
-  let currentDate = inputs.startDate;
-  const productiveHoursPerDay = Math.max(0, Number(inputs.shifts) || 0) * Math.max(0, Number(inputs.hoursPerShift) || 0);
-  const schedule = Array.from(groups.values())
-    .sort((a, b) => getPhaseRank(a.phase) - getPhaseRank(b.phase) || a.sequence - b.sequence)
-    .map((group, index) => {
-      const capacityKey = group.trade.includes("/") ? "OTHER" : group.trade;
-      const personnel = Number(inputs.tradeCapacity[capacityKey] ?? inputs.tradeCapacity.OTHER ?? 0);
-      const denominator = personnel * productiveHoursPerDay * Math.max(0, Number(inputs.productivityFactor) || 0);
-      const durationDays = denominator > 0 ? Math.max(1, group.plannedMh / denominator) : 0;
-      const finishDate = durationDays ? addWorkingDays(currentDate, durationDays, inputs) : currentDate;
-      const row = {
-        id: index + 1,
-        package: packageName,
-        label: group.label,
-        phase: group.phase,
-        trade: group.trade,
-        startDate: currentDate,
-        finishDate,
-        durationDays,
-        plannedMh: group.plannedMh,
-        assignedPersonnel: personnel,
-        sequence: group.sequence === Number.MAX_SAFE_INTEGER ? "" : group.sequence,
-        tasks: group.tasks,
-        validationMessage: denominator > 0 ? "" : `No personnel/productive hours available for ${group.trade || "OTHER"}`
+  const productiveHoursPerPersonPerDay =
+    Math.max(0, Number(inputs.shifts) || 0) *
+    Math.max(0, Number(inputs.hoursPerShift) || 0) *
+    Math.max(0, Number(inputs.productivityFactor) || 0);
+  const sortedGroups = Array.from(groups.values()).sort(
+    (a, b) => a.sequence - b.sequence || getPhaseRank(a.phase) - getPhaseRank(b.phase) || a.label.localeCompare(b.label)
+  );
+  const sequenceFinish = new Map();
+  const schedule = [];
+
+  sortedGroups.forEach((group) => {
+    const sequence = group.sequence === Number.MAX_SAFE_INTEGER ? 9999 : group.sequence;
+    const previousSequences = Array.from(sequenceFinish.entries())
+      .filter(([seq]) => Number(seq) < sequence)
+      .map(([, finish]) => finish);
+    const startDay = previousSequences.length ? Math.max(...previousSequences) : 0;
+    const byTrade = summarizeWorkload(group.rows, "trade");
+    const mainTrade = normalizePlanTrade(byTrade[0]?.label || group.trade);
+    const tradeDurations = byTrade.map((tradeRow) => {
+      const trade = normalizePlanTrade(tradeRow.label);
+      const personnel = Number(inputs.tradeCapacity[trade] ?? inputs.tradeCapacity.OTHER ?? 0);
+      const denominator = personnel * productiveHoursPerPersonPerDay;
+      return {
+        trade,
+        personnel,
+        durationDays: denominator > 0 ? Math.max(0.1, tradeRow.manHours / denominator) : 0,
+        warning: denominator > 0 ? "" : `No personnel/productive hours available for ${getTradeDisplayLabel(trade)}`
       };
-      currentDate = addWorkingDays(finishDate, 1, inputs);
-      return row;
     });
+    const durationDays = tradeDurations.length ? Math.max(...tradeDurations.map((item) => item.durationDays), 0) : 0;
+    const mainPersonnel = Number(inputs.tradeCapacity[mainTrade] ?? inputs.tradeCapacity.OTHER ?? 0);
+    const warning = tradeDurations.find((item) => item.warning)?.warning || "";
+    const endDay = startDay + durationDays;
+    sequenceFinish.set(sequence, Math.max(sequenceFinish.get(sequence) || 0, endDay));
+    schedule.push({
+      id: schedule.length + 1,
+      package: packageName,
+      label: group.label,
+      phase: group.phase,
+      trade: mainTrade,
+      tradeLabel: getTradeDisplayLabel(mainTrade),
+      startDay,
+      endDay,
+      durationDays,
+      plannedMh: group.plannedMh,
+      assignedPersonnel: mainPersonnel,
+      productiveHoursPerPersonPerDay,
+      sequence: group.sequence === Number.MAX_SAFE_INTEGER ? "" : group.sequence,
+      tasks: group.tasks,
+      validationMessage: warning
+    });
+  });
 
   return schedule;
 }
@@ -2276,17 +2664,125 @@ function getSelectedMaintenanceProgram() {
   return (
     maintenancePrograms.find((program) => program.key === state.selectedMaintenanceProgram) ||
     maintenancePrograms[0] || {
-      key: "OCA",
-      registration: "PK-OCA",
-      model: "BELL 412 SP",
+      key: "BELL412",
+      registration: "BELL 412",
+      model: "BELL 412",
       parentTasks: [],
       totals: { childTasks: 0, manHours: 0 }
     }
   );
 }
 
+function heavyCheckTaskAppliesToSelectedProgram(task, program = getSelectedMaintenanceProgram()) {
+  const registration = normalizeText(task.aircraftRegistration || task.aircraft_registration, true);
+  if (!registration) {
+    return true;
+  }
+
+  return registration.includes(program.registration) || registration.includes(program.key);
+}
+
+function getApprovedHeavyCheckWorkloadForSelectedProgram() {
+  const program = getSelectedMaintenanceProgram();
+  const tasks = state.approvedTaskMaster.filter((task) => heavyCheckTaskAppliesToSelectedProgram(task, program));
+  const knownManHours = tasks.reduce((sum, task) => sum + (Number(task.plannedMh ?? task.planned_mh) || 0), 0);
+
+  return {
+    tasks,
+    taskCount: tasks.length,
+    knownManHours,
+    missingManHourTasks: tasks.filter((task) => (task.plannedMh ?? task.planned_mh) == null).length
+  };
+}
+
+function applyApprovedHeavyCheckWorkload(parentTasks) {
+  return parentTasks;
+}
+
+function getManualIntervalManHours(intervalKey) {
+  const rawValue = state.manualIntervalManHours?.[intervalKey];
+  if (rawValue === "" || rawValue == null) {
+    return 0;
+  }
+
+  const numericValue = Number(rawValue);
+  return Number.isFinite(numericValue) && numericValue >= 0 ? numericValue : 0;
+}
+
+function isManualTaskCardInterval(intervalKey) {
+  return manualTaskCardIntervalKeys.includes(intervalKey);
+}
+
+function getManualIntervalTaskCards(intervalKey) {
+  const rawValue = state.manualIntervalTaskCards?.[intervalKey];
+  if (rawValue === "" || rawValue == null) {
+    return 0;
+  }
+
+  const numericValue = Number(rawValue);
+  return Number.isFinite(numericValue) && numericValue > 0 ? Math.floor(numericValue) : 0;
+}
+
+function getMissingBaselineManHourIntervals() {
+  return baselineIntervalKeys.filter((intervalKey) => getManualIntervalManHours(intervalKey) <= 0);
+}
+
+function getMissingBaselineTaskCardIntervals() {
+  return manualTaskCardIntervalKeys.filter((intervalKey) => getManualIntervalTaskCards(intervalKey) <= 0);
+}
+
+function getMissingBaselineInputItems() {
+  return [
+    ...getMissingBaselineManHourIntervals().map((intervalKey) => `${intervalKey.replace("-hour", " hrs")} man-hours`),
+    ...getMissingBaselineTaskCardIntervals().map((intervalKey) => `${intervalKey.replace("-hour", " hrs")} task-card count`)
+  ];
+}
+
+function hasCompleteBaselineManHours() {
+  return getMissingBaselineManHourIntervals().length === 0 && getMissingBaselineTaskCardIntervals().length === 0;
+}
+
+function getManualBaselineTotalManHours() {
+  return baselineIntervalKeys.reduce((total, intervalKey) => total + getManualIntervalManHours(intervalKey), 0);
+}
+
+function getBaselineInputSnapshot() {
+  return JSON.stringify({
+    manHours: state.manualIntervalManHours,
+    taskCards: state.manualIntervalTaskCards
+  });
+}
+
+function clearGeneratedPlanningState() {
+  state.equalizationStarted = false;
+  state.equalizationLoading = false;
+  state.ganttCreated = false;
+  state.latestEqualizationScenario = null;
+}
+
+function clearBaselineModelState() {
+  state.baseModelStarted = false;
+  state.baseModelLoading = false;
+  clearGeneratedPlanningState();
+}
+
 function getSelectedInspectionTasks() {
-  return getSelectedMaintenanceProgram().parentTasks || [];
+  return (getSelectedMaintenanceProgram().parentTasks || []).map((item) => {
+    const manHours = baselineIntervalKeys.includes(item.parentPackage) ? getManualIntervalManHours(item.parentPackage) : Number(item.manHours) || 0;
+    const sourceChildTasks = Number(item.childTasks) || Number(item.totalChildTasks) || 0;
+    const childTasks = isManualTaskCardInterval(item.parentPackage) ? getManualIntervalTaskCards(item.parentPackage) : sourceChildTasks;
+
+    return {
+      ...item,
+      childTasks,
+      totalChildTasks: childTasks,
+      averageManHoursPerTask: childTasks ? manHours / childTasks : 0,
+      manHours,
+      manHoursInputValue: state.manualIntervalManHours?.[item.parentPackage] ?? "",
+      taskCardsInputValue: state.manualIntervalTaskCards?.[item.parentPackage] ?? "",
+      currentNote: baselineIntervalKeys.includes(item.parentPackage) ? "Manual baseline input" : item.currentNote
+    };
+  });
 }
 
 function getPrimaryInspectionTasks() {
@@ -2317,9 +2813,19 @@ function bindMaintenanceProgramSelector() {
   document.querySelectorAll("[data-maintenance-program]").forEach((button) => {
     button.addEventListener("click", () => {
       state.selectedMaintenanceProgram = button.dataset.maintenanceProgram;
+      clearGeneratedPlanningState();
+      state.manualPackageAssignments = {};
       render();
     });
   });
+}
+
+function getInspectionMethodologyText() {
+  return (
+    "Enter the planned man-hours for each BELL 412 inspection interval before generating the baseline model. " +
+    "For the 5000-hour interval, enter the task-card count as well because it is not supplied by the current datasource. " +
+    "The same interval values are then reused by the equalization planning chart."
+  );
 }
 
 function getBaselineInspectionBlocks() {
@@ -2339,30 +2845,26 @@ function getBaselineInspectionBlocks() {
 }
 
 function getSimulationAircraft() {
-  const selectedProgram = getSelectedMaintenanceProgram();
-  const utilizationAircraft = utilizationData.aircraft.find(
-    (aircraft) => aircraft.registration === selectedProgram.registration
-  );
+  const aircraftRows = Array.isArray(utilizationData.aircraft) ? utilizationData.aircraft : [];
+  const utilizationRates = aircraftRows
+    .map((aircraft) => aircraft.avgFHPerDay || (utilizationData.window.calendarDays ? aircraft.totalFH / utilizationData.window.calendarDays : 0))
+    .filter((value) => Number.isFinite(value) && value > 0);
 
-  if (utilizationAircraft) {
-    const aircraft = utilizationAircraft;
-      const averageFlightHoursPerDay =
-        aircraft.avgFHPerDay ||
-        (utilizationData.window.calendarDays ? aircraft.totalFH / utilizationData.window.calendarDays : 0);
-
-      return [
-        {
-        registration: aircraft.registration,
-        model: aircraft.model,
+  if (utilizationRates.length) {
+    const averageFlightHoursPerDay = utilizationRates.reduce((total, value) => total + value, 0) / utilizationRates.length;
+    return [
+      {
+        registration: "BELL 412",
+        model: "BELL 412",
         averageFlightHoursPerMonth: averageFlightHoursPerDay * simulationDaysPerMonth
-        }
-      ];
+      }
+    ];
   }
 
   return [
     {
-      registration: selectedProgram.registration || selectedProgram.key,
-      model: selectedProgram.model || "Bell 412",
+      registration: "BELL 412",
+      model: "BELL 412",
       averageFlightHoursPerMonth: 20
     }
   ];
@@ -2564,6 +3066,9 @@ function recalculateSimulationTotals(simulation) {
 
 function buildEqualizedInspectionScenario(program) {
   const scenario = cloneSimulation(buildBaselineSimulation());
+  scenario.title = program.title;
+  scenario.program = program;
+  scenario.percentKey = state.equalized;
   const blockKeys =
     program.equalizedBlockKeys === "all"
       ? scenario.blocks.map((block) => block.key)
@@ -2649,6 +3154,7 @@ function getSimulationMaxPeriodTotal(simulation, view) {
 
 function renderWorkloadBreakdownTable(title, rows) {
   const visibleRows = rows.slice(0, 12);
+  const firstColumnLabel = /trade/i.test(title) ? "Trade" : /ata/i.test(title) ? "ATA" : /phase/i.test(title) ? "Phase" : "Group";
   return `
     <article class="mini-panel">
       <h4>${escapeHtml(title)}</h4>
@@ -2656,7 +3162,7 @@ function renderWorkloadBreakdownTable(title, rows) {
         <table>
           <thead>
             <tr>
-              <th>Category</th>
+              <th>${firstColumnLabel}</th>
               <th>Tasks</th>
               <th>Man-Hours</th>
             </tr>
@@ -2668,7 +3174,7 @@ function renderWorkloadBreakdownTable(title, rows) {
                     .map(
                       (row) => `
                         <tr>
-                          <td>${escapeHtml(row.label)}</td>
+                          <td>${escapeHtml(/trade/i.test(title) ? getTradeDisplayLabel(row.label) : row.label)}</td>
                           <td>${formatNumber(row.tasks)}</td>
                           <td><strong>${formatDecimal(row.manHours, 1)}</strong></td>
                         </tr>
@@ -2693,12 +3199,12 @@ function renderHeavyCheckBaselineSection() {
           <div>
             <p class="card-kicker">5000H Heavy Check Breakdown</p>
             <h3>Heavy Check Baseline</h3>
-          </div>
         </div>
-        <div class="warning-box">No approved 5000-hour task master is available yet. Page 2 is showing the existing 700 man-hour context assumption until a workbook is uploaded, validated, and approved on Page 1.</div>
-      </article>
-    `;
-  }
+      </div>
+      <div class="warning-box">No approved 5000-hour task master is available yet for the selected aircraft program. The 5000-hour block is not using an assumed man-hour value; upload, validate, and approve the datasource workbook on Page 1.</div>
+    </article>
+  `;
+}
 
   return `
     <article class="card">
@@ -2733,13 +3239,22 @@ function renderHeavyCheckBaselineSection() {
 }
 
 function renderReviewOptions(options, selected) {
-  return options.map((option) => `<option value="${option}" ${option === selected ? "selected" : ""}>${option}</option>`).join("");
+  return options
+    .map((option) => {
+      const label = movableOptions.includes(option)
+        ? getEngineeringDecisionLabel(option)
+        : automaticMovabilityOptions.includes(option)
+        ? getAutomaticMovabilityLabel(option)
+        : option;
+      return `<option value="${option}" ${option === selected ? "selected" : ""}>${escapeHtml(label)}</option>`;
+    })
+    .join("");
 }
 
 function renderEngineeringReviewRows() {
   const rows = filterReviewTasks().sort((a, b) => (Number(b.plannedMh) || 0) - (Number(a.plannedMh) || 0)).slice(0, 100);
   if (!rows.length) {
-    return `<tr><td colspan="14">No engineering-review tasks match the current filters.</td></tr>`;
+    return `<tr><td colspan="12">No engineering-review tasks match the current filters.</td></tr>`;
   }
 
   const selected = new Set(state.selectedReviewTaskUids);
@@ -2749,28 +3264,33 @@ function renderEngineeringReviewRows() {
         <tr>
           <td><input type="checkbox" data-review-select="${task.taskUid}" ${selected.has(task.taskUid) ? "checked" : ""} /></td>
           <td><strong>${escapeHtml(task.taskCardNo)}</strong><div class="tail-note">${escapeHtml(task.sourceSheet)} row ${task.sourceRow}</div></td>
+          <td>${escapeHtml(clampText(task.description, 76))}</td>
           <td>${escapeHtml(task.ata)}</td>
-          <td>${escapeHtml(task.trade)}</td>
+          <td>${escapeHtml(getTradeDisplayLabel(task.trade))}</td>
           <td>${escapeHtml(task.phase)}</td>
-          <td>${escapeHtml(task.taskCode)}</td>
           <td>${formatDecimal(task.plannedMh, 1)}</td>
+          <td>
+            ${statusBadgeForAutoMovability(task.autoMovability)}
+            <div class="tail-note">${escapeHtml(task.autoConfidence || "LOW")} confidence</div>
+          </td>
+          <td><strong>${escapeHtml(task.autoGroupId || "-")}</strong><div class="tail-note">${escapeHtml(task.autoGroupReason || "No move-together group")}</div></td>
           <td>
             <select data-review-task="${task.taskUid}" data-review-field="movability">
               ${renderReviewOptions(movableOptions, task.movability)}
             </select>
           </td>
-          <td><input class="table-input" data-review-task="${task.taskUid}" data-review-field="approvedGroupId" value="${escapeHtml(task.approvedGroupId)}" placeholder="GROUP-001" /></td>
-          <td><input class="table-input" data-review-task="${task.taskUid}" data-review-field="accessGroup" value="${escapeHtml(task.accessGroup)}" placeholder="Access group" /></td>
+          <td>
+            <select data-review-task="${task.taskUid}" data-review-field="finalPackage">
+              ${heavyCheckPackages.map((pkg) => `<option value="${pkg}" ${task.finalPackage === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
+            </select>
+          </td>
           <td>
             <select data-review-task="${task.taskUid}" data-review-field="reviewStatus">
               ${renderReviewOptions(reviewStatusOptions, task.reviewStatus)}
             </select>
+            <input class="table-input" data-review-task="${task.taskUid}" data-review-field="approvedGroupId" value="${escapeHtml(task.approvedGroupId)}" placeholder="Approved group" />
           </td>
-          <td><input class="table-input" data-review-task="${task.taskUid}" data-review-field="reviewedBy" value="${escapeHtml(task.reviewedBy)}" placeholder="Reviewer" /></td>
           <td><input class="table-input" data-review-task="${task.taskUid}" data-review-field="reviewNotes" value="${escapeHtml(task.reviewNotes)}" placeholder="Review notes" /></td>
-          <td>
-            <small><strong>${escapeHtml(task.candidateGroupId || "-")}</strong><br>${escapeHtml(task.candidateReason || "No suggestion")}</small>
-          </td>
         </tr>
       `
     )
@@ -2778,7 +3298,7 @@ function renderEngineeringReviewRows() {
 }
 
 function renderEngineeringReviewSection() {
-  const tasks = getReviewedTasks();
+  const tasks = getReviewedTasksForSelectedProgram();
   if (!tasks.length) {
     return `
       <article class="card">
@@ -2792,29 +3312,40 @@ function renderEngineeringReviewSection() {
       </article>
     `;
   }
+  const autoGroups = buildCandidateGroupSummaries(tasks);
+  const approvedCount = tasks.filter((task) => task.reviewStatus === "APPROVED").length;
+  const needsReview = tasks.filter((task) => task.autoMovability === "UNCERTAIN" || task.autoConfidence === "LOW").length;
 
   return `
     <article class="card workflow-card">
       <div class="section-header">
         <div>
           <p class="card-kicker">Engineering Review</p>
-          <h3>Classify 5000H Tasks and Approved Groups</h3>
+          <h3>Check Automatic Task Suggestions</h3>
         </div>
         <div class="inspection-total">
-          <span>Reviewed / Approved</span>
-          <strong>${formatNumber(tasks.filter((task) => task.reviewStatus !== "PENDING").length)} / ${formatNumber(tasks.length)}</strong>
+          <span>Approved / Total</span>
+          <strong>${formatNumber(approvedCount)} / ${formatNumber(tasks.length)}</strong>
         </div>
       </div>
       <div class="scope-notice">
-        Conservative rule: UNREVIEWED and CORE tasks remain in Core. MOVABLE tasks require engineering approval. CONDITIONAL tasks move only with an approved group. Candidate groups are suggestions only.
+        This page gives a first-pass suggestion for each 5000-hour task. Engineers can approve, keep in Core, change the package, or add notes before the final plan is used.
       </div>
+      ${renderMetricStrip([
+        { label: "Can Be Moved", value: formatNumber(tasks.filter((task) => task.autoMovability === "LIKELY_MOVABLE").length) },
+        { label: "Move Together", value: formatNumber(tasks.filter((task) => task.autoMovability === "CONDITIONAL").length) },
+        { label: "Must Stay in Core", value: formatNumber(tasks.filter((task) => task.autoMovability === "LIKELY_CORE").length) },
+        { label: "Needs Engineer Review", value: formatNumber(needsReview) },
+        { label: "Candidate Groups", value: formatNumber(autoGroups.length) }
+      ])}
 
       <div class="filter-grid">
         ${renderReviewFilter("ata", "ATA", uniqueValues(tasks, "ata"))}
         ${renderReviewFilter("phase", "Phase", uniqueValues(tasks, "phase"))}
         ${renderReviewFilter("trade", "Trade", uniqueValues(tasks, "trade"))}
-        ${renderReviewFilter("taskCode", "Task Code", uniqueValues(tasks, "taskCode"))}
-        ${renderReviewFilter("movability", "Movability", movableOptions)}
+        ${renderReviewFilter("movability", "Suggested Decision", automaticMovabilityOptions)}
+        ${renderReviewFilter("confidence", "Confidence", confidenceOptions)}
+        ${renderReviewFilter("package", "Package", heavyCheckPackages)}
         ${renderReviewFilter("reviewStatus", "Review Status", reviewStatusOptions)}
         <label class="wide">
           <span>Search</span>
@@ -2823,9 +3354,9 @@ function renderEngineeringReviewSection() {
       </div>
 
       <div class="toolbar-row">
-        <button class="secondary-button" data-review-suggest type="button">Suggest Candidate Groups</button>
+        <button class="secondary-button" data-review-suggest type="button">Refresh Automatic Suggestions</button>
         <select data-bulk-field="movability">${renderReviewOptions(movableOptions, "MOVABLE")}</select>
-        <button class="secondary-button" data-bulk-apply="movability" type="button">Bulk Movability</button>
+        <button class="secondary-button" data-bulk-apply="movability" type="button">Bulk Decision</button>
         <input class="table-input" data-bulk-value="approvedGroupId" placeholder="GROUP-001" />
         <button class="secondary-button" data-bulk-apply="approvedGroupId" type="button">Bulk Group</button>
         <input class="table-input" data-bulk-value="reviewedBy" placeholder="Reviewer" />
@@ -2836,27 +3367,29 @@ function renderEngineeringReviewSection() {
       <div class="table-wrap tall-table">
         <table>
           <thead>
-            <tr>
-              <th>Select</th>
-              <th>Task Card</th>
-              <th>ATA</th>
-              <th>Trade</th>
-              <th>Phase</th>
-              <th>Task Code</th>
-              <th>MH</th>
-              <th>Movability</th>
-              <th>Approved Group</th>
-              <th>Access Group</th>
-              <th>Status</th>
-              <th>Reviewed By</th>
-              <th>Notes</th>
-              <th>Candidate Group</th>
-            </tr>
+                    <tr>
+                      <th>Select</th>
+                      <th>Task Card</th>
+                      <th>Short Description</th>
+                      <th>ATA</th>
+                      <th>Trade</th>
+                      <th>Phase</th>
+                      <th>Man-Hours</th>
+                      <th>Automatic Suggestion</th>
+                      <th>Move-Together Group</th>
+                      <th>Engineer Decision</th>
+                      <th>Final Package</th>
+                      <th>Status</th>
+                      <th>Notes</th>
+                    </tr>
           </thead>
-          <tbody>${renderEngineeringReviewRows()}</tbody>
+                  <tbody>${renderEngineeringReviewRows()}</tbody>
         </table>
       </div>
-      <p class="data-note">Showing up to 100 filtered tasks sorted by largest man-hours for efficient review.</p>
+      <details class="soft-details">
+        <summary>Technical Details</summary>
+        <p class="data-note">Automatic fields are recommendations only. Candidate groups use DMC/MM family, component wording, compatible phase/sequence, trade, ATA subsystem, and task-code family. Showing up to 100 filtered tasks sorted by largest man-hours.</p>
+      </details>
     </article>
   `;
 }
@@ -2921,19 +3454,144 @@ function bindEngineeringReviewControls() {
   });
 }
 
+function renderBaselineManHourWarning() {
+  const missing = getMissingBaselineInputItems();
+  if (!missing.length) {
+    return "";
+  }
+
+  return `
+    <div class="warning-box" data-baseline-warning>
+      Complete ${missing.join(", ")} before generating the baseline and equalized charts.
+    </div>
+  `;
+}
+
+function renderBaselineInputCards() {
+  return getSelectedInspectionTasks()
+    .map((item) => {
+      const requiresTaskCards = isManualTaskCardInterval(item.parentPackage);
+      return `
+        <div class="baseline-input-block ${requiresTaskCards ? "baseline-input-block-wide" : ""}">
+          <span class="baseline-input-interval">${escapeHtml(item.parentPackage.replace("-hour", " hrs"))}</span>
+          <span class="baseline-input-meta" data-interval-task-meta="${escapeHtml(item.parentPackage)}">${
+            requiresTaskCards && !item.childTasks ? "Task-card count required" : `${formatNumber(item.childTasks)} task cards`
+          }</span>
+          <label class="baseline-subfield">
+            <span class="baseline-input-unit">Man-Hours</span>
+            <input
+              data-interval-mh="${escapeHtml(item.parentPackage)}"
+              type="number"
+              min="0"
+              step="0.1"
+              inputmode="decimal"
+              value="${escapeHtml(item.manHoursInputValue)}"
+              placeholder="0.0"
+              aria-label="${escapeHtml(item.parentPackage.replace("-hour", " hour"))} man-hours"
+            />
+          </label>
+          ${
+            requiresTaskCards
+              ? `
+                <label class="baseline-subfield">
+                  <span class="baseline-input-unit">Task Cards</span>
+                  <input
+                    data-interval-task-cards="${escapeHtml(item.parentPackage)}"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputmode="numeric"
+                    value="${escapeHtml(item.taskCardsInputValue)}"
+                    placeholder="0"
+                    aria-label="${escapeHtml(item.parentPackage.replace("-hour", " hour"))} task-card count"
+                  />
+                </label>
+              `
+              : ""
+          }
+        </div>
+      `;
+    })
+    .join("");
+}
+
+function renderBaselineInputSummaryRows() {
+  return getSelectedInspectionTasks()
+    .map(
+      (item) => `
+        <tr>
+          <td><strong>${escapeHtml(item.parentPackage.replace("-hour", " hrs"))}</strong></td>
+          <td>${escapeHtml(item.taskCard)}</td>
+          <td>${formatNumber(item.childTasks)}</td>
+          <td>${formatDecimal(item.manHours, 1)}</td>
+          <td>${formatDecimal(item.averageManHoursPerTask, 2)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderBaseModelLoadingCard() {
+  return `
+    <article class="card baseline-loading-card" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div>
+        <p class="card-kicker">Generating Baseline</p>
+        <h3>Building Base Model Chart</h3>
+        <p class="data-note">Calculating the 5-year BELL 412 workload simulation from the entered man-hours.</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderEqualizationLoadingCard() {
+  const program = equalizedPrograms[state.equalized] || equalizedPrograms["100"];
+  return `
+    <article class="card baseline-loading-card equalization-loading-card" aria-live="polite">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <div>
+        <p class="card-kicker">Generating Equalization</p>
+        <h3>Loading ${escapeHtml(program.title)}</h3>
+        <p class="data-note">Applying the selected plan to the generated BELL 412 base model.</p>
+      </div>
+    </article>
+  `;
+}
+
+function renderBaselineContinueCard() {
+  return `
+    <article class="card workflow-card equalization-launch-card">
+      <div class="section-header">
+        <div>
+          <p class="card-kicker">Next Step</p>
+          <h3>Continue to Equalization Planning</h3>
+        </div>
+      </div>
+      <p class="inspection-method">Use this generated base model as the source for equalization planning.</p>
+      <div class="toolbar-row">
+        <button class="primary-button" data-continue-equalization type="button">Continue to Equalization Plan</button>
+      </div>
+    </article>
+  `;
+}
+
 function renderBasicInspection() {
   const selectedProgram = getSelectedMaintenanceProgram();
   const primaryTasks = getPrimaryInspectionTasks();
   const totalChildTasks = primaryTasks.reduce((total, item) => total + item.childTasks, 0);
   const totalManHours = primaryTasks.reduce((total, item) => total + item.manHours, 0);
-  const baselineSimulation = buildBaselineSimulation();
+  const baselineReady = hasCompleteBaselineManHours();
+  const baseModelGenerating = baselineReady && state.baseModelLoading;
+  const baseModelStarted = baselineReady && state.baseModelStarted;
+  const baselineSimulation = baseModelStarted ? buildBaselineSimulation() : null;
+  const workflowStep = baseModelStarted ? "choose" : "start-base";
 
   content.innerHTML = `
     <section class="view-grid">
       <div class="section-header">
         <div>
           <p class="section-kicker">Page 2</p>
-          <h2>Baseline Heavy Check & Engineering Review</h2>
+          <h2>Baseline Heavy Check</h2>
         </div>
       </div>
 
@@ -2942,104 +3600,178 @@ function renderBasicInspection() {
         ${renderMaintenanceProgramSelector()}
       </div>
 
-      <article class="card">
-        <div class="chart-toolbar">
+      ${renderWorkflowSteps(workflowStep)}
+
+      <article class="card baseline-input-card ${baseModelGenerating || baseModelStarted ? "baseline-complete" : ""}">
+        <div class="section-header">
           <div>
-            <h3>Modeling Inspection Interval</h3>
-            <p class="card-kicker">${selectedProgram.model} / ${selectedProgram.registration}</p>
+            <p class="card-kicker">Baseline Input</p>
+            <h3>Enter BELL 412 Man-Hours</h3>
           </div>
-          <div class="inspection-total" aria-label="Basic inspection model totals">
-            <span>${formatNumber(totalChildTasks)} Child Tasks</span>
+          <div class="inspection-total" aria-label="Manual baseline total">
+            <span data-baseline-task-total>${formatNumber(totalChildTasks)} Task Cards</span>
             <strong>${formatDecimal(totalManHours, 1)} Man Hours</strong>
           </div>
         </div>
-        <p class="inspection-method">${basicInspectionData.methodology}</p>
-        <div class="scope-notice">Beta equalization scope: 5000-hour / 5-year heavy inspection only. Smaller inspection intervals are operational context and are not included in the task-distribution algorithm.</div>
-        <div class="chart-frame">
-          <canvas id="intervalChart" aria-label="BELL 412 parent package man-hours chart" role="img"></canvas>
+        <p class="inspection-method">${getInspectionMethodologyText()}</p>
+        ${renderBaselineManHourWarning()}
+        <div class="baseline-input-grid">
+          ${renderBaselineInputCards()}
+        </div>
+        <div class="toolbar-row baseline-action-row">
+          <button class="primary-button" data-start-base-model type="button" ${baseModelGenerating || baseModelStarted ? "disabled" : ""}>${
+            baseModelGenerating ? "Generating..." : baseModelStarted ? "Base Model Created" : "Start Base Model"
+          }</button>
+          <span class="data-note" data-baseline-action-note>${
+            baseModelGenerating
+              ? "Generating baseline model..."
+              : baseModelStarted
+              ? "Baseline model is ready for equalization planning."
+              : baselineReady
+              ? "Ready to generate baseline model."
+              : "Complete all baseline inputs to continue."
+          }</span>
         </div>
       </article>
 
-      <article class="card">
-        <div class="chart-toolbar">
-          <div>
-            <p class="card-kicker">Baseline Equalizing Start Point</p>
-            <h3>5-Year Stacked Inspection Workload</h3>
-          </div>
-          <div class="simulation-toolbar-actions">
-            <div class="tabs compact-tabs" role="tablist" aria-label="Simulation chart detail level">
-              ${Object.entries(simulationViews)
-                .map(
-                  ([key, label]) => `
-                    <button class="${key === state.simulationView ? "active" : ""}" data-simulation-view="${key}" type="button">
-                      ${label}
-                    </button>
-                  `
-                )
-                .join("")}
+      ${state.baseModelLoading ? renderBaseModelLoadingCard() : ""}
+
+      ${
+        baseModelStarted
+          ? `
+            <div class="baseline-model-reveal">
+              <article class="card">
+                <div class="chart-toolbar">
+                  <div>
+                    <h3>Modeling Inspection Interval</h3>
+                    <p class="card-kicker">${selectedProgram.model}</p>
+                  </div>
+                  <div class="inspection-total" aria-label="Basic inspection model totals">
+                    <span>Manual Baseline</span>
+                    <strong>${formatDecimal(getManualBaselineTotalManHours(), 1)} Man Hours</strong>
+                  </div>
+                </div>
+                <div class="chart-frame">
+                  <canvas id="intervalChart" aria-label="BELL 412 parent package man-hours chart" role="img"></canvas>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="chart-toolbar">
+                  <div>
+                    <p class="card-kicker">Baseline Equalizing Start Point</p>
+                    <h3>5-Year Stacked Inspection Workload</h3>
+                  </div>
+                  <div class="simulation-toolbar-actions">
+                    <div class="tabs compact-tabs" role="tablist" aria-label="Simulation chart detail level">
+                      ${Object.entries(simulationViews)
+                        .map(
+                          ([key, label]) => `
+                            <button class="${key === state.simulationView ? "active" : ""}" data-simulation-view="${key}" type="button">
+                              ${label}
+                            </button>
+                          `
+                        )
+                        .join("")}
+                    </div>
+                    <div class="inspection-total" aria-label="Five-year baseline simulation totals">
+                      <span>${simulationMonths}-Month Simulation</span>
+                      <strong>${formatDecimal(baselineSimulation.totalManHours, 1)} Man Hours</strong>
+                    </div>
+                  </div>
+                </div>
+                <p class="inspection-method">
+                  Simulation uses the average BELL 412 utilization rate of
+                  ${formatDecimal(baselineSimulation.averageFlightHoursPerMonth, 1)} Flight Hours per month.
+                  The 25-hour block is already equalized evenly across the simulation, while 100-hour, 300-hour,
+                  600-hour, and 5000-hour blocks remain stacked when their intervals fall due.
+                </p>
+                <div class="chart-frame simulation-chart">
+                  <canvas id="baselineStackedChart" aria-label="Five-year stacked maintenance workload simulation" role="img"></canvas>
+                </div>
+              </article>
+
+              <article class="card">
+                <div class="section-header">
+                  <div>
+                    <p class="card-kicker">Baseline Detail</p>
+                    <h3>Entered Man-Hour Summary</h3>
+                  </div>
+                </div>
+                <div class="table-wrap compact-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Inspection Interval</th>
+                        <th>Task Card</th>
+                        <th>Task Cards</th>
+                        <th>Man-Hours</th>
+                        <th>Average Man-Hours per Task</th>
+                      </tr>
+                    </thead>
+                    <tbody>${renderBaselineInputSummaryRows()}</tbody>
+                  </table>
+                </div>
+              </article>
+
+              ${renderBaselineContinueCard()}
             </div>
-            <div class="inspection-total" aria-label="Five-year baseline simulation totals">
-              <span>${simulationMonths}-Month Simulation</span>
-              <strong>${formatDecimal(baselineSimulation.totalManHours, 1)} Man Hours</strong>
-            </div>
-          </div>
-        </div>
-        <p class="inspection-method">
-          Simulation uses the current average utilization rate of
-          ${formatDecimal(baselineSimulation.averageFlightHoursPerMonth, 1)} Flight Hours per month for
-          ${selectedProgram.model} / ${selectedProgram.registration};
-          the 25-hour block is already equalized evenly across the simulation, while 100-hour, 300-hour,
-          600-hour, and 5000-hour blocks remain stacked when their intervals fall due.
-          The 5000-hour package also uses its 5-year calendar limit so it appears at the end of this simulation.
-        </p>
-        <div class="chart-frame simulation-chart">
-          <canvas id="baselineStackedChart" aria-label="Five-year stacked maintenance workload simulation" role="img"></canvas>
-        </div>
-      </article>
-
-      <article class="card">
-        <div class="section-header">
-          <div>
-            <p class="card-kicker">Source Table</p>
-            <h3>Parent Task Workload Model</h3>
-          </div>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Inspection Interval</th>
-                <th>Task Card</th>
-                <th>Child Tasks</th>
-                <th>Average Man Hours per Task</th>
-                <th>Man Hours</th>
-                <th>Applicability</th>
-                <th>Current Note</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${renderBasicInspectionRows()}
-            </tbody>
-          </table>
-        </div>
-      </article>
-
-      ${renderHeavyCheckBaselineSection()}
-      ${renderEngineeringReviewSection()}
+          `
+          : ""
+      }
     </section>
   `;
 
   bindMaintenanceProgramSelector();
+  bindBaselineManHourInputs();
+  document.querySelector("[data-start-base-model]")?.addEventListener("click", () => {
+    if (state.baseModelLoading || state.baseModelStarted) {
+      return;
+    }
+
+    syncBaselineManHourInputsFromDom();
+    if (!hasCompleteBaselineManHours()) {
+      state.baseModelStarted = false;
+      state.baseModelLoading = false;
+      render();
+      return;
+    }
+
+    clearGeneratedPlanningState();
+    state.baseModelStarted = false;
+    state.baseModelLoading = true;
+    const baselineSnapshot = getBaselineInputSnapshot();
+    render();
+    window.setTimeout(() => {
+      if (!state.baseModelLoading || getBaselineInputSnapshot() !== baselineSnapshot) {
+        return;
+      }
+      state.baseModelLoading = false;
+      state.baseModelStarted = true;
+      render();
+      window.requestAnimationFrame(() => {
+        document.querySelector(".baseline-model-reveal")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      });
+    }, 720);
+  });
+  document.querySelector("[data-continue-equalization]")?.addEventListener("click", () => {
+    state.equalizationStarted = false;
+    state.equalizationLoading = false;
+    state.ganttCreated = false;
+    state.latestEqualizationScenario = null;
+    state.section = "equalized-inspection";
+    render();
+  });
   document.querySelectorAll("[data-simulation-view]").forEach((button) => {
     button.addEventListener("click", () => {
       state.simulationView = button.dataset.simulationView;
       render();
     });
   });
-
-  renderIntervalChart();
-  renderBaselineStackedChart(baselineSimulation);
-  bindEngineeringReviewControls();
+  if (baseModelStarted) {
+    renderIntervalChart();
+    renderBaselineStackedChart(baselineSimulation);
+  }
 }
 
 function renderBasicInspectionRows() {
@@ -3053,14 +3785,112 @@ function renderBasicInspectionRows() {
           </td>
           <td>${item.taskCard}</td>
           <td>${formatNumber(item.childTasks)}</td>
+          <td>
+            <input
+              class="table-input short man-hour-input"
+              data-interval-mh="${escapeHtml(item.parentPackage)}"
+              type="number"
+              min="0"
+              step="0.1"
+              value="${escapeHtml(item.manHoursInputValue)}"
+              placeholder="Enter MH"
+            />
+          </td>
           <td>${formatDecimal(item.averageManHoursPerTask, 2)}</td>
-          <td><strong>${formatDecimal(item.manHours, 1)}</strong></td>
           <td>${item.applicabilityLabel || getSelectedMaintenanceProgram().key}</td>
           <td>${item.currentNote}</td>
         </tr>
       `
     )
     .join("");
+}
+
+function bindBaselineManHourInputs() {
+  document.querySelectorAll("[data-interval-mh], [data-interval-task-cards]").forEach((input) => {
+    const syncInput = () => {
+      const value = Number(input.value);
+      if (input.dataset.intervalMh) {
+        state.manualIntervalManHours[input.dataset.intervalMh] =
+          input.value === "" || !Number.isFinite(value) || value < 0 ? "" : input.value;
+      }
+      if (input.dataset.intervalTaskCards) {
+        state.manualIntervalTaskCards[input.dataset.intervalTaskCards] =
+          input.value === "" || !Number.isFinite(value) || value <= 0 ? "" : String(Math.floor(value));
+        if (input.value !== state.manualIntervalTaskCards[input.dataset.intervalTaskCards]) {
+          input.value = state.manualIntervalTaskCards[input.dataset.intervalTaskCards];
+        }
+      }
+      clearBaselineModelState();
+      refreshBaselineActionStateInDom();
+    };
+
+    input.addEventListener("input", syncInput);
+    input.addEventListener("change", syncInput);
+  });
+}
+
+function refreshBaselineActionStateInDom() {
+  document.querySelector(".baseline-input-card")?.classList.remove("baseline-complete");
+  document.querySelector(".baseline-model-reveal")?.remove();
+  document.querySelector(".baseline-loading-card")?.remove();
+
+  const missing = getMissingBaselineInputItems();
+  const warning = document.querySelector("[data-baseline-warning]");
+  if (warning && !missing.length) {
+    warning.remove();
+  } else if (warning) {
+    warning.textContent = `Complete ${missing.join(", ")} before generating the baseline and equalized charts.`;
+  } else if (missing.length) {
+    document
+      .querySelector(".baseline-input-grid")
+      ?.insertAdjacentHTML(
+        "beforebegin",
+        `<div class="warning-box" data-baseline-warning>Complete ${missing.join(", ")} before generating the baseline and equalized charts.</div>`
+      );
+  }
+
+  const button = document.querySelector("[data-start-base-model]");
+  if (button) {
+    button.disabled = false;
+    button.textContent = "Start Base Model";
+  }
+
+  const note = document.querySelector("[data-baseline-action-note]");
+  if (note) {
+    note.textContent = missing.length ? "Complete all baseline inputs to continue." : "Ready to generate baseline model.";
+  }
+
+  const primaryTasks = getPrimaryInspectionTasks();
+  const taskTotal = primaryTasks.reduce((total, item) => total + item.childTasks, 0);
+  const taskTotalElement = document.querySelector("[data-baseline-task-total]");
+  if (taskTotalElement) {
+    taskTotalElement.textContent = `${formatNumber(taskTotal)} Task Cards`;
+  }
+
+  document.querySelectorAll("[data-interval-task-meta]").forEach((meta) => {
+    const item = primaryTasks.find((task) => task.parentPackage === meta.dataset.intervalTaskMeta);
+    if (!item) {
+      return;
+    }
+
+    meta.textContent =
+      isManualTaskCardInterval(item.parentPackage) && !item.childTasks
+        ? "Task-card count required"
+        : `${formatNumber(item.childTasks)} task cards`;
+  });
+}
+
+function syncBaselineManHourInputsFromDom() {
+  document.querySelectorAll("[data-interval-mh]").forEach((input) => {
+    const value = Number(input.value);
+    state.manualIntervalManHours[input.dataset.intervalMh] =
+      input.value === "" || !Number.isFinite(value) || value < 0 ? "" : input.value;
+  });
+  document.querySelectorAll("[data-interval-task-cards]").forEach((input) => {
+    const value = Number(input.value);
+    state.manualIntervalTaskCards[input.dataset.intervalTaskCards] =
+      input.value === "" || !Number.isFinite(value) || value <= 0 ? "" : String(Math.floor(value));
+  });
 }
 
 function getEqualizedComparisonText(program, selectedProgram) {
@@ -3077,9 +3907,11 @@ function renderPackageSummaryRows(scenario) {
       (item) => `
         <tr>
           <td><strong>${item.package}</strong></td>
+          <td>${formatNumber(item.groups)}</td>
           <td>${formatNumber(item.tasks)}</td>
           <td>${formatDecimal(item.manHours, 1)}</td>
-          <td>${item.byTrade.slice(0, 3).map((row) => `${escapeHtml(row.label)} (${formatDecimal(row.manHours, 1)} MH)`).join("<br>")}</td>
+          <td>${formatDecimal(item.estimatedGroundDays, 1)}</td>
+          <td>${formatDecimal(item.reviewCompletion, 0)}%</td>
         </tr>
       `
     )
@@ -3088,15 +3920,18 @@ function renderPackageSummaryRows(scenario) {
 
 function renderMovementRegisterRows(scenario) {
   const grouped = new Map();
+  const packageField = scenario.packageField || getPackageFieldForMode(scenario.mode);
   scenario.movementRegister.forEach((row) => {
     const current = grouped.get(row.itemKey) || {
       itemKey: row.itemKey,
-      taskCardNo: row.approvedGroupId || row.taskCardNo,
-      description: row.approvedGroupId ? `Approved group ${row.approvedGroupId}` : row.description,
+      taskCardNo: row.autoGroupId || row.approvedGroupId || row.taskCardNo,
+      description: row.autoGroupId || row.approvedGroupId ? `Move-together group ${row.autoGroupId || row.approvedGroupId}` : row.description,
       plannedMh: 0,
-      movability: row.movability,
+      movability: row.autoMovabilityLabel,
+      confidence: row.autoConfidence,
       approvedGroupId: row.approvedGroupId,
-      proposedPackage: row.proposedPackage,
+      autoGroupId: row.autoGroupId,
+      packageName: row[packageField],
       movementReason: row.movementReason,
       reviewStatus: row.reviewStatus,
       taskCount: 0
@@ -3113,14 +3948,14 @@ function renderMovementRegisterRows(scenario) {
       (row) => `
         <tr>
           <td><strong>${escapeHtml(row.taskCardNo)}</strong><div class="tail-note">${formatNumber(row.taskCount)} task(s)</div></td>
-          <td>${escapeHtml(row.description)}</td>
+          <td>${escapeHtml(clampText(row.description, 100))}</td>
           <td>${formatDecimal(row.plannedMh, 1)}</td>
-          <td>${escapeHtml(row.movability)}</td>
-          <td>${escapeHtml(row.approvedGroupId || "-")}</td>
+          <td>${escapeHtml(row.movability)}<div class="tail-note">${escapeHtml(row.confidence || "LOW")}</div></td>
+          <td>${escapeHtml(row.autoGroupId || row.approvedGroupId || "-")}</td>
           <td>Core</td>
           <td>
             <select data-package-override="${escapeHtml(row.itemKey)}">
-              ${heavyCheckPackages.map((pkg) => `<option value="${pkg}" ${row.proposedPackage === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
+              ${heavyCheckPackages.map((pkg) => `<option value="${pkg}" ${row.packageName === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
             </select>
           </td>
           <td>${escapeHtml(row.movementReason)}</td>
@@ -3144,19 +3979,594 @@ function renderTaskEqualizationChart(scenario) {
   const defaults = chartDefaults();
   const context = document.getElementById("taskEqualizedChart");
   const labels = scenario.packageSummaries.map((item) => item.package);
-  const values = scenario.packageSummaries.map((item) => item.manHours);
-  const maxValue = Math.max(...values, 0);
+  const packageField = scenario.packageField || getPackageFieldForMode(scenario.mode);
+  const breakdownKey =
+    state.equalizationBreakdown === "trade"
+      ? "trade"
+      : state.equalizationBreakdown === "ata"
+      ? "ata"
+      : state.equalizationBreakdown === "phase"
+      ? "phase"
+      : "";
+  const palette = ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0F766E", "#9333EA", "#EA580C", "#64748B"];
+  const baseDataset = state.showEqualizedComparison
+    ? [
+        {
+          label: "Base model",
+          data: heavyCheckPackages.map((pkg) => (pkg === "Core" ? scenario.peakBefore : 0)),
+          backgroundColor: "rgba(100, 116, 139, 0.16)",
+          borderColor: "rgba(100, 116, 139, 0.28)",
+          borderWidth: 1,
+          borderRadius: 5,
+          stack: "base",
+          order: 2,
+          legendHidden: true
+        }
+      ]
+    : [];
+  const valueLookup = new Map(scenario.packageSummaries.map((item) => [item.package, item.manHours]));
+  const datasets = breakdownKey
+    ? Array.from(new Set(scenario.movementRegister.map((row) => normalizeBlank(row[breakdownKey]) || "Unspecified")))
+        .map((category) => ({
+          label: category,
+          total: scenario.movementRegister
+            .filter((row) => (normalizeBlank(row[breakdownKey]) || "Unspecified") === category)
+            .reduce((sum, row) => sum + row.plannedMh, 0)
+        }))
+        .sort((a, b) => b.total - a.total)
+        .slice(0, 8)
+        .map((category, index) => ({
+          label: category.label,
+          data: labels.map((pkg) =>
+            scenario.movementRegister
+              .filter((row) => row[packageField] === pkg && (normalizeBlank(row[breakdownKey]) || "Unspecified") === category.label)
+              .reduce((sum, row) => sum + row.plannedMh, 0)
+          ),
+          backgroundColor: palette[index % palette.length],
+          borderColor: palette[index % palette.length],
+          borderWidth: 1,
+          borderRadius: 4,
+          stack: "equalized",
+          order: 1
+        }))
+    : [
+        {
+          label: "Man-Hours",
+          data: labels.map((pkg) => valueLookup.get(pkg) || 0),
+          backgroundColor: ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#64748B"],
+          borderColor: ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#64748B"],
+          borderWidth: 1,
+          borderRadius: 5,
+          stack: "equalized",
+          order: 1
+        }
+      ];
+  const values = labels.map((pkg) =>
+    scenario.movementRegister.filter((row) => row[packageField] === pkg).reduce((sum, row) => sum + row.plannedMh, 0)
+  );
+  const maxValue = Math.max(...values, state.showEqualizedComparison ? scenario.peakBefore : 0);
   state.charts.taskEqualized = new Chart(context, {
+    type: "bar",
+    plugins: [barValueLabelPlugin],
+    data: {
+      labels,
+      datasets: [...baseDataset, ...datasets]
+    },
+    options: {
+      ...defaults,
+      animation: { duration: 640, easing: "easeOutQuart" },
+      layout: { padding: { top: 28 } },
+      plugins: {
+        ...defaults.plugins,
+        legend: breakdownKey ? defaults.plugins.legend : { display: false },
+        barValueLabels: { enabled: true, mode: breakdownKey ? "stackTotal" : "default", values, decimals: 1 },
+        tooltip: {
+          ...defaults.plugins.tooltip,
+          filter: (context) => !context.dataset.legendHidden,
+          callbacks: {
+            label: (context) => `${context.dataset.label}: ${formatDecimal(context.parsed.y || 0, 1)} Man-Hours`,
+            afterLabel: (context) => {
+              const item = scenario.packageSummaries[context.dataIndex];
+              return [`Tasks: ${formatNumber(item.tasks)}`, `Estimated Days: ${formatDecimal(item.estimatedGroundDays, 1)}`];
+            }
+          }
+        }
+      },
+      scales: {
+        x: { ...defaults.scales.x, stacked: true },
+        y: {
+          ...defaults.scales.y,
+          stacked: true,
+          suggestedMax: maxValue ? maxValue * 1.18 : undefined,
+          title: {
+            display: true,
+            text: "Man-Hours",
+            color: chartColors.muted,
+            font: { family: "Montserrat", weight: "700" }
+          }
+        }
+      }
+    }
+  });
+}
+
+function renderWorkflowSteps(activeStep) {
+  const steps = [
+    ["start-base", "Start Base Model"],
+    ["choose", "Choose Equalization"],
+    ["equalize", "Start Equalization"],
+    ["chart", "View Equalized Chart"],
+    ["gantt-button", "Create Gantt Charts"],
+    ["gantt", "View Gantt"]
+  ];
+  const activeIndex = Math.max(
+    steps.findIndex(([key]) => key === activeStep),
+    0
+  );
+
+  return `
+    <div class="workflow-steps" aria-label="Planning workflow">
+      ${steps
+        .map(([key, label], index) => {
+          const status = index < activeIndex ? "complete" : index === activeIndex ? "active" : "pending";
+          return `<span class="${status}"><strong>${index + 1}</strong>${escapeHtml(label)}</span>`;
+        })
+        .join("")}
+    </div>
+  `;
+}
+
+function renderEqualizationControls(scenario) {
+  return `
+    <div class="toolbar-row equalization-control-row">
+      <div class="tabs compact-tabs" role="tablist" aria-label="Equalized workload options">
+        ${Object.keys(equalizedPrograms)
+          .map(
+            (key) => `
+              <button class="${key === state.equalized ? "active" : ""}" data-equalized="${key}" type="button">
+                ${key}% <span>${key === "50" ? "Move some eligible work" : key === "75" ? "Move most eligible work" : "Move all eligible work"}</span>
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      <div class="tabs compact-tabs" role="tablist" aria-label="Assignment source">
+        ${Object.entries(assignmentModes)
+          .map(
+            ([key, label]) => `
+              <button class="${key === state.equalizationAssignmentMode ? "active" : ""}" data-assignment-mode="${key}" type="button">
+                ${escapeHtml(label)}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      <button class="comparison-toggle ${state.showEqualizedComparison ? "active" : ""}" data-equalized-comparison type="button" aria-pressed="${state.showEqualizedComparison}">
+        <span class="comparison-toggle-track" aria-hidden="true"><span></span></span>
+        <span class="comparison-toggle-text">Base comparison ${state.showEqualizedComparison ? "On" : "Off"}</span>
+      </button>
+      <button class="secondary-button" data-reset-equalization type="button">Reset Manual Packages</button>
+    </div>
+    <p class="data-note">These percentages apply only to tasks that the system considers eligible to move. Tasks that must stay in Core are not included.</p>
+    ${
+      scenario.unreviewedTasks
+        ? `<div class="warning-box">${formatNumber(scenario.unreviewedTasks)} task(s) are still not approved. Final exports will clearly mark them as unapproved.</div>`
+        : ""
+    }
+  `;
+}
+
+function renderPackageOverviewRows(scenario) {
+  return scenario.packageSummaries
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.package)}</strong></td>
+          <td>${formatNumber(row.groups)}</td>
+          <td>${formatNumber(row.tasks)}</td>
+          <td>${formatDecimal(row.manHours, 1)}</td>
+          <td>${formatDecimal(row.estimatedGroundDays, 1)}</td>
+          <td>${formatDecimal(row.reviewCompletion, 0)}%</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderFullTaskRegisterRows(scenario) {
+  const packageField = scenario.packageField || getPackageFieldForMode(scenario.mode);
+  return scenario.movementRegister
+    .sort((a, b) => b.plannedMh - a.plannedMh)
+    .slice(0, 300)
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.taskCardNo)}</strong></td>
+          <td>${escapeHtml(row.shortDescription)}</td>
+          <td>${escapeHtml(row.ata)}</td>
+          <td>${escapeHtml(getTradeDisplayLabel(row.trade))}</td>
+          <td>${escapeHtml(row.phase)}</td>
+          <td>${formatDecimal(row.plannedMh, 1)}</td>
+          <td>${escapeHtml(row.autoMovabilityLabel)}</td>
+          <td>${escapeHtml(row.autoGroupId || "-")}</td>
+          <td>${escapeHtml(row.proposedPackage)}</td>
+          <td>${escapeHtml(row.engineeringDecisionLabel)}</td>
+          <td>${escapeHtml(row[packageField])}</td>
+          <td>${escapeHtml(row.reviewStatus)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function getReviewQueueItems(scenario) {
+  const packageField = scenario.packageField || getPackageFieldForMode(scenario.mode);
+  const groups = new Map();
+  scenario.movementRegister.forEach((row) => {
+    const current = groups.get(row.itemKey) || {
+      itemKey: row.itemKey,
+      taskCardNo: row.autoGroupId || row.approvedGroupId || row.taskCardNo,
+      description: row.autoGroupId || row.approvedGroupId ? `Move-together group ${row.autoGroupId || row.approvedGroupId}` : row.description,
+      rows: [],
+      tasks: 0,
+      manHours: 0,
+      ata: new Set(),
+      trade: new Set(),
+      phase: new Set(),
+      refs: new Set(),
+      autoMovability: row.autoMovability,
+      autoMovabilityLabel: row.autoMovabilityLabel,
+      autoConfidence: row.autoConfidence,
+      autoReason: row.autoReason,
+      autoGroupId: row.autoGroupId,
+      autoGroupReason: row.autoGroupReason,
+      suggestedPackage: row.proposedPackage,
+      finalPackage: row.finalPackage,
+      packageName: row[packageField],
+      movementReason: row.movementReason,
+      reviewStatus: row.reviewStatus,
+      engineeringDecisionLabel: row.engineeringDecisionLabel
+    };
+    current.rows.push(row);
+    current.tasks += 1;
+    current.manHours += row.plannedMh;
+    if (row.ata) current.ata.add(row.ata);
+    if (row.trade) current.trade.add(row.trade);
+    if (row.phase) current.phase.add(row.phase);
+    if (row.refMm) current.refs.add(row.refMm);
+    if (row.refDmc) current.refs.add(row.refDmc);
+    if (row.autoConfidence === "LOW") current.autoConfidence = "LOW";
+    if (row.reviewStatus === "PENDING") current.reviewStatus = "PENDING";
+    groups.set(row.itemKey, current);
+  });
+
+  const filters = state.reviewFilters;
+  return Array.from(groups.values())
+    .filter((item) => {
+      const ataValues = Array.from(item.ata);
+      const tradeValues = Array.from(item.trade);
+      const phaseValues = Array.from(item.phase);
+      return (
+        (filters.ata === "all" || ataValues.includes(filters.ata)) &&
+        (filters.trade === "all" || tradeValues.includes(filters.trade)) &&
+        (filters.phase === "all" || phaseValues.includes(filters.phase)) &&
+        (filters.movability === "all" || item.autoMovability === filters.movability) &&
+        (filters.confidence === "all" || item.autoConfidence === filters.confidence) &&
+        (filters.package === "all" || item.packageName === filters.package || item.suggestedPackage === filters.package) &&
+        (filters.reviewStatus === "all" || item.reviewStatus === filters.reviewStatus)
+      );
+    })
+    .sort((a, b) => {
+      const confidenceRank = { LOW: 0, MEDIUM: 1, HIGH: 2 };
+      return (confidenceRank[a.autoConfidence] ?? 0) - (confidenceRank[b.autoConfidence] ?? 0) || b.manHours - a.manHours;
+    });
+}
+
+function renderReviewQueueCard(scenario) {
+  const items = getReviewQueueItems(scenario);
+  if (!items.length) {
+    return `<div class="warning-box">No review items match the current filters.</div>`;
+  }
+
+  state.reviewQueueIndex = Math.max(0, Math.min(state.reviewQueueIndex, items.length - 1));
+  const item = items[state.reviewQueueIndex];
+  const taskList = item.rows.slice(0, 8).map((row) => `<li>${escapeHtml(row.taskCardNo)} - ${escapeHtml(row.shortDescription)}</li>`).join("");
+  const moreCount = Math.max(0, item.rows.length - 8);
+
+  return `
+    <div class="review-card">
+      <div class="review-card-header">
+        <div>
+          <p class="card-kicker">Review ${formatNumber(state.reviewQueueIndex + 1)} of ${formatNumber(items.length)}</p>
+          <h3>${escapeHtml(item.taskCardNo || "Task Group")}</h3>
+        </div>
+        <div class="review-card-status">
+          ${statusBadgeForAutoMovability(item.autoMovability)}
+          ${statusBadgeForReviewStatus(item.reviewStatus)}
+        </div>
+      </div>
+      <div class="review-question">Can this task or group be completed separately from the main 5000-hour heavy check?</div>
+      <div class="review-card-grid">
+        <div>
+          <span>Description</span>
+          <strong>${escapeHtml(clampText(item.description, 140))}</strong>
+        </div>
+        <div>
+          <span>Planned Man-Hours</span>
+          <strong>${formatDecimal(item.manHours, 1)}</strong>
+        </div>
+        <div>
+          <span>Suggested Package</span>
+          <strong>${escapeHtml(item.suggestedPackage)}</strong>
+        </div>
+        <div>
+          <span>Confidence</span>
+          <strong>${escapeHtml(item.autoConfidence || "LOW")}</strong>
+        </div>
+      </div>
+      <div class="scope-notice">${escapeHtml(item.autoReason || "Needs engineer review.")}</div>
+      ${item.autoGroupId ? `<div class="scope-notice">Suggested to move together: ${escapeHtml(item.autoGroupReason || "Related tasks should be reviewed as one group.")}</div>` : ""}
+      <ul class="review-task-list">${taskList}${moreCount ? `<li>+ ${formatNumber(moreCount)} more task(s)</li>` : ""}</ul>
+      <div class="toolbar-row">
+        <label>
+          <span>Final Package</span>
+          <select data-review-card-package>
+            ${heavyCheckPackages.map((pkg) => `<option value="${pkg}" ${item.suggestedPackage === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
+          </select>
+        </label>
+        <label class="grow">
+          <span>Review Notes</span>
+          <input data-review-card-note type="text" placeholder="Optional notes" />
+        </label>
+      </div>
+      <div class="review-actions">
+        <button class="primary-button" data-review-action="approve" type="button">Yes, Move It</button>
+        <button class="secondary-button" data-review-action="keep" type="button">No, Keep in Core</button>
+        <button class="secondary-button" data-review-action="conditional" type="button">These Tasks Move Together</button>
+        <button class="secondary-button" data-review-action="unsure" type="button">I Am Not Sure</button>
+        <button class="secondary-button" data-review-action="reject-group" type="button">Reject Grouping</button>
+      </div>
+      <div class="review-pager">
+        <button class="secondary-button" data-review-action="previous" type="button">Previous</button>
+        <button class="secondary-button" data-review-action="skip" type="button">Skip for Later</button>
+        <button class="secondary-button" data-review-action="next" type="button">Next</button>
+      </div>
+      <details class="soft-details">
+        <summary>Technical Details</summary>
+        <p class="data-note">
+          ATA: ${escapeHtml(Array.from(item.ata).join(", ") || "-")} |
+          Trade: ${escapeHtml(Array.from(item.trade).map(getTradeDisplayLabel).join(", ") || "-")} |
+          Phase: ${escapeHtml(Array.from(item.phase).join(", ") || "-")} |
+          References: ${escapeHtml(Array.from(item.refs).slice(0, 4).join(", ") || "-")}
+        </p>
+      </details>
+    </div>
+  `;
+}
+
+function applyReviewQueueAction(action, scenario) {
+  const items = getReviewQueueItems(scenario);
+  if (!items.length) {
+    return;
+  }
+
+  state.reviewQueueIndex = Math.max(0, Math.min(state.reviewQueueIndex, items.length - 1));
+  const item = items[state.reviewQueueIndex];
+  const packageValue = document.querySelector("[data-review-card-package]")?.value || item.suggestedPackage || "Core";
+  const note = document.querySelector("[data-review-card-note]")?.value || "";
+  const taskUids = new Set(item.rows.map((row) => row.taskUid));
+
+  if (action === "previous") {
+    state.reviewQueueIndex = Math.max(0, state.reviewQueueIndex - 1);
+    render();
+    return;
+  }
+  if (action === "next" || action === "skip") {
+    state.reviewQueueIndex = Math.min(items.length - 1, state.reviewQueueIndex + 1);
+    render();
+    return;
+  }
+
+  state.reviewedTaskMaster = getReviewedTasks().map((task) => {
+    if (!taskUids.has(task.taskUid)) {
+      return task;
+    }
+
+    if (action === "approve") {
+      const grouped = Boolean(item.autoGroupId || task.autoGroupId || task.approvedGroupId);
+      return {
+        ...task,
+        movability: grouped ? "CONDITIONAL" : "MOVABLE",
+        engineeringDecision: grouped ? "CONDITIONAL" : "MOVABLE",
+        approvedGroupId: grouped ? task.approvedGroupId || task.autoGroupId || item.autoGroupId : task.approvedGroupId || "",
+        finalPackage: packageValue,
+        reviewStatus: "APPROVED",
+        reviewNotes: note || "Approved automatic suggestion."
+      };
+    }
+
+    if (action === "keep") {
+      return {
+        ...task,
+        movability: "CORE",
+        engineeringDecision: "CORE",
+        finalPackage: "Core",
+        reviewStatus: "APPROVED",
+        reviewNotes: note || "Engineer kept this work in Core."
+      };
+    }
+
+    if (action === "conditional") {
+      return {
+        ...task,
+        movability: "CONDITIONAL",
+        engineeringDecision: "CONDITIONAL",
+        approvedGroupId: task.approvedGroupId || task.autoGroupId || item.autoGroupId || `MANUAL-${item.itemKey.replace(/[^A-Z0-9]+/gi, "-").slice(0, 18)}`,
+        finalPackage: packageValue,
+        reviewStatus: "REVIEWED",
+        reviewNotes: note || "Engineer marked this as a move-together item."
+      };
+    }
+
+    if (action === "reject-group") {
+      return {
+        ...task,
+        approvedGroupId: "",
+        finalPackage: "Core",
+        reviewStatus: "REVIEWED",
+        reviewNotes: note || "Automatic grouping rejected. Review as an individual task."
+      };
+    }
+
+    return {
+      ...task,
+      movability: "UNREVIEWED",
+      engineeringDecision: "UNREVIEWED",
+      finalPackage: "Core",
+      reviewStatus: "REVIEWED",
+      reviewNotes: note || "Engineer marked this item for further review."
+    };
+  });
+
+  state.latestEqualizationScenario = null;
+  state.reviewQueueIndex = Math.min(items.length - 1, state.reviewQueueIndex + 1);
+  render();
+}
+
+function bindExportControls(scenario, schedule = []) {
+  document.querySelectorAll("[data-export]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const kind = button.dataset.export;
+      const rows = scenario?.movementRegister || [];
+      const packageField = scenario?.packageField || getPackageFieldForMode(scenario?.mode || state.equalizationAssignmentMode);
+
+      if (kind === "task-master") downloadTextFile("validated-5000h-task-master.csv", toCsv(state.approvedTaskMaster));
+      if (kind === "review") downloadTextFile("engineering-review-decisions.csv", toCsv(getReviewedTasks()));
+      if (kind === "classification") downloadTextFile("automatic-classification.csv", toCsv(rows));
+      if (kind === "groups") downloadTextFile("candidate-groups.csv", toCsv(scenario?.candidateGroups || []));
+      if (kind === "assignments") downloadTextFile("package-assignments.csv", toCsv(rows));
+      if (kind === "movable") downloadTextFile("movable-tasks.csv", toCsv(rows.filter((row) => row[packageField] !== "Core")));
+      if (kind === "core") downloadTextFile("core-tasks.csv", toCsv(rows.filter((row) => row[packageField] === "Core")));
+      if (kind === "unreviewed") downloadTextFile("unreviewed-tasks.csv", toCsv(rows.filter((row) => row.reviewStatus !== "APPROVED")));
+      if (kind === "gantt") downloadTextFile("relative-day-gantt-schedule.csv", toCsv(schedule));
+      if (kind === "ground-assumptions")
+        downloadTextFile(
+          "ground-time-assumptions.csv",
+          toCsv([
+            {
+              shiftsPerDay: state.ganttInputs.shifts,
+              hoursPerShift: state.ganttInputs.hoursPerShift,
+              productivityFactor: state.ganttInputs.productivityFactor,
+              tradeCapacity: JSON.stringify(state.ganttInputs.tradeCapacity)
+            }
+          ])
+        );
+      if (kind === "summary")
+        downloadTextFile(
+          "scenario-summary.csv",
+          toCsv([
+            {
+              assignmentMode: scenario?.modeLabel,
+              requestedPercent: scenario?.requestedPercent,
+              achievedPercent: scenario?.achievedPercent,
+              eligibleManHours: scenario?.eligibleManHours,
+              redistributedManHours: scenario?.redistributedManHours,
+              coreBeforeDays: scenario?.coreBeforeDays,
+              coreAfterDays: scenario?.coreAfterDays,
+              limitations:
+              "Preliminary beta decision-support output only. Automatic recommendations are separate from final approved results."
+            }
+          ])
+        );
+    });
+  });
+}
+
+function renderEqualizationOptionButtons() {
+  return `
+    <div class="plan-option-grid" role="radiogroup" aria-label="Equalization plan">
+      ${Object.entries(equalizedPrograms)
+        .sort(([a], [b]) => Number(b) - Number(a))
+        .map(
+          ([key, program]) => `
+            <button class="plan-option ${state.equalized === key ? "active" : ""}" data-equalized="${key}" type="button" aria-pressed="${
+            state.equalized === key
+          }">
+              <strong>${escapeHtml(program.title)}</strong>
+              <span>${escapeHtml(program.description)}</span>
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderEqualizedQuickPlanTabs() {
+  return `
+    <div class="tabs compact-tabs" role="tablist" aria-label="Quick equalization plan selector">
+      ${Object.keys(equalizedPrograms)
+        .sort((a, b) => Number(a) - Number(b))
+        .map(
+          (key) => `
+            <button class="${key === state.equalized ? "active" : ""}" data-equalized-quick="${key}" type="button">
+              ${key}%
+            </button>
+          `
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function renderSimplePackageRows(scenario) {
+  return scenario.packageSummaries
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.package)}</strong></td>
+          <td>${escapeHtml(row.includedTradeGroups)}</td>
+          <td>${formatNumber(row.tasks)}</td>
+          <td>${formatDecimal(row.manHours, 1)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderEqualizedBaselineChart(scenario) {
+  const context = document.getElementById("equalizedBaselineChart");
+  if (!context) {
+    return;
+  }
+
+  if (!window.Chart) {
+    showChartFallback("equalizedBaselineChart");
+    return;
+  }
+
+  if (state.charts.equalizedBaseline) {
+    state.charts.equalizedBaseline.destroy();
+    delete state.charts.equalizedBaseline;
+  }
+
+  const defaults = chartDefaults();
+  const labels = scenario.packageSummaries.map((item) => item.package);
+  const values = scenario.packageSummaries.map((item) => Number(item.manHours) || 0);
+  const maxValue = Math.max(...values, 0);
+  const colors = ["#0C528A", "#D97706", "#0F766E", "#7C3AED", "#DC2626", "#2563EB"];
+
+  state.charts.equalizedBaseline = new Chart(context, {
     type: "bar",
     plugins: [barValueLabelPlugin],
     data: {
       labels,
       datasets: [
         {
-          label: "Task-Level Man-Hours",
+          label: "Equalized Man-Hours",
           data: values,
-          backgroundColor: ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#64748B"],
-          borderColor: ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#64748B"],
+          backgroundColor: labels.map((_, index) => colors[index % colors.length]),
+          borderColor: labels.map((_, index) => colors[index % colors.length]),
           borderWidth: 1,
           borderRadius: 5
         }
@@ -3164,6 +4574,7 @@ function renderTaskEqualizationChart(scenario) {
     },
     options: {
       ...defaults,
+      animation: { duration: 640, easing: "easeOutQuart" },
       layout: { padding: { top: 28 } },
       plugins: {
         ...defaults.plugins,
@@ -3172,15 +4583,24 @@ function renderTaskEqualizationChart(scenario) {
         tooltip: {
           ...defaults.plugins.tooltip,
           callbacks: {
+            label: (context) => `Man-Hours: ${formatDecimal(context.parsed.y || 0, 1)}`,
             afterLabel: (context) => {
               const item = scenario.packageSummaries[context.dataIndex];
-              return [`Tasks: ${formatNumber(item.tasks)}`, `Package: ${item.package}`];
+              return [`Tasks: ${formatNumber(item.tasks)}`, `Trade Groups: ${item.includedTradeGroups}`];
             }
           }
         }
       },
       scales: {
-        x: defaults.scales.x,
+        x: {
+          ...defaults.scales.x,
+          title: {
+            display: true,
+            text: "Equalized Package",
+            color: chartColors.muted,
+            font: { family: "Montserrat", weight: "700" }
+          }
+        },
         y: {
           ...defaults.scales.y,
           suggestedMax: maxValue ? maxValue * 1.18 : undefined,
@@ -3196,13 +4616,116 @@ function renderTaskEqualizationChart(scenario) {
   });
 }
 
+function renderPackageTaskRows(scenario) {
+  return scenario.movementRegister
+    .slice()
+    .sort((a, b) => a.finalPackage.localeCompare(b.finalPackage) || a.trade.localeCompare(b.trade) || a.sequence - b.sequence)
+    .map(
+      (row) => `
+        <tr>
+          <td>${escapeHtml(row.finalPackage)}</td>
+          <td>${escapeHtml(getTradeDisplayLabel(row.trade))}</td>
+          <td>${escapeHtml(row.tradeGroupId)}</td>
+          <td><strong>${escapeHtml(row.taskCardNo)}</strong></td>
+          <td>${escapeHtml(row.shortDescription)}</td>
+          <td>${formatDecimal(row.plannedMh, 1)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderManualTradeGroupRows(scenario) {
+  return scenario.tradeGroups
+    .map((group) => {
+      const currentPackage =
+        state.manualPackageAssignments[`group:${group.id}`] ||
+        scenario.packageSummaries.find((pkg) => pkg.includedTradeGroups.split(", ").includes(group.id))?.package ||
+        scenario.packages[0];
+      return `
+        <tr>
+          <td><strong>${escapeHtml(group.id)}</strong></td>
+          <td>${escapeHtml(getTradeDisplayLabel(group.trade))}</td>
+          <td>${formatNumber(group.tasks.length)}</td>
+          <td>${formatDecimal(group.manHours, 1)}</td>
+          <td>
+            <select data-manual-group="${escapeHtml(group.id)}">
+              ${scenario.packages.map((pkg) => `<option value="${pkg}" ${currentPackage === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
+            </select>
+          </td>
+        </tr>
+      `;
+    })
+    .join("");
+}
+
+function renderManualTaskRows(scenario) {
+  return scenario.movementRegister
+    .slice()
+    .sort((a, b) => b.plannedMh - a.plannedMh)
+    .slice(0, 160)
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.taskCardNo)}</strong></td>
+          <td>${escapeHtml(row.tradeGroupId)}</td>
+          <td>${escapeHtml(row.finalPackage)}</td>
+          <td>${formatDecimal(row.plannedMh, 1)}</td>
+          <td>${escapeHtml(row.shortDescription)}</td>
+          <td>
+            <select data-manual-task="${escapeHtml(row.taskUid)}">
+              <option value="">Use group package</option>
+              ${scenario.packages.map((pkg) => `<option value="${pkg}" ${state.manualPackageAssignments[`task:${row.taskUid}`] === pkg ? "selected" : ""}>${pkg}</option>`).join("")}
+            </select>
+          </td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function startEqualizationWithLoading(percentKey = state.equalized) {
+  if (!hasCompleteBaselineManHours() || !state.baseModelStarted || state.equalizationLoading) {
+    return;
+  }
+
+  state.equalized = percentKey;
+  state.equalizationStarted = false;
+  state.equalizationLoading = true;
+  state.ganttCreated = false;
+  state.latestEqualizationScenario = null;
+  state.manualPackageAssignments = {};
+  const selectedPlanSnapshot = percentKey;
+  const baselineSnapshot = getBaselineInputSnapshot();
+  render();
+
+  window.setTimeout(() => {
+    if (
+      !state.equalizationLoading ||
+      state.equalized !== selectedPlanSnapshot ||
+      getBaselineInputSnapshot() !== baselineSnapshot
+    ) {
+      return;
+    }
+
+    state.equalizationLoading = false;
+    state.equalizationStarted = true;
+    state.latestEqualizationScenario = buildEqualizedInspectionScenario(equalizedPrograms[state.equalized] || equalizedPrograms["100"]);
+    render();
+  }, 720);
+}
+
 function renderEqualizedInspection() {
-  const program = equalizedPrograms[state.equalized];
+  const program = equalizedPrograms[state.equalized] || equalizedPrograms["100"];
   const selectedProgram = getSelectedMaintenanceProgram();
-  const reviewedTasks = getReviewedTasks();
-  const hasTaskMaster = reviewedTasks.length > 0;
-  const scenario = hasTaskMaster ? buildEqualizationScenarioFromTasks(state.equalized) : buildEqualizedInspectionScenario(program);
-  if (hasTaskMaster) {
+  const baselineInputsReady = hasCompleteBaselineManHours();
+  const baseModelReady = baselineInputsReady && state.baseModelStarted;
+  const baselineSimulation = baseModelReady ? buildBaselineSimulation() : null;
+  const equalizationLoading = baseModelReady && state.equalizationLoading;
+  const scenario = baseModelReady && state.equalizationStarted && !equalizationLoading ? buildEqualizedInspectionScenario(program) : null;
+  const baselinePeak = baselineSimulation ? getSimulationMaxPeriodTotal(baselineSimulation, state.simulationView) : 0;
+  const equalizedPeak = scenario ? getSimulationMaxPeriodTotal(scenario, state.simulationView) : 0;
+  if (scenario) {
     state.latestEqualizationScenario = scenario;
   }
 
@@ -3220,133 +4743,90 @@ function renderEqualizedInspection() {
         ${renderMaintenanceProgramSelector()}
       </div>
 
-      <article class="card">
-        <div class="chart-toolbar">
-          <div>
-            <p class="card-kicker">Workload Distribution Scenario</p>
-            <h3>${program.title}</h3>
-            <p class="card-kicker">${selectedProgram.model} / ${selectedProgram.registration}</p>
-          </div>
-          <div class="simulation-toolbar-actions">
-            <div class="tabs compact-tabs" role="tablist" aria-label="Equalized workload options">
-              ${Object.keys(equalizedPrograms)
-                .map(
-                  (key) => `
-                    <button class="${key === state.equalized ? "active" : ""}" data-equalized="${key}" type="button">
-                      Equalized ${key}%
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-            <div class="tabs compact-tabs" role="tablist" aria-label="Equalized simulation detail level">
-              ${Object.entries(simulationViews)
-                .map(
-                  ([key, label]) => `
-                    <button class="${key === state.simulationView ? "active" : ""}" data-simulation-view="${key}" type="button">
-                      ${label}
-                    </button>
-                  `
-                )
-                .join("")}
-            </div>
-            ${
-              hasTaskMaster
-                ? ""
-                : `<button class="comparison-toggle ${state.showEqualizedComparison ? "active" : ""}" data-equalized-comparison type="button" aria-pressed="${state.showEqualizedComparison}">
-                    <span class="comparison-toggle-track" aria-hidden="true">
-                      <span></span>
-                    </span>
-                    <span class="comparison-toggle-text">Base comparison ${state.showEqualizedComparison ? "On" : "Off"}</span>
-                  </button>`
-            }
-            <div class="inspection-total" aria-label="Equalized simulation totals">
-              <span>${hasTaskMaster ? "Task-Level Scenario" : `${simulationMonths}-Month Context`}</span>
-              <strong>${formatDecimal(hasTaskMaster ? scenario.redistributedManHours : scenario.totalManHours, 1)} Man-Hours</strong>
-            </div>
-          </div>
-        </div>
-        ${
-          hasTaskMaster
-            ? `
-              <p class="inspection-method" data-equalized-method>${program.description} This beta uses transparent greedy load balancing of approved movable items only; it is not an approved maintenance program.</p>
-              ${renderMetricStrip([
-                { label: "Approved Movable Workload", value: `${formatDecimal(scenario.eligibleManHours, 1)} MH` },
-                { label: "Requested Equalization", value: `${scenario.requestedPercent}%` },
-                { label: "Actual Achieved", value: `${formatDecimal(scenario.achievedPercent, 1)}%` },
-                { label: "Moved Tasks", value: formatNumber(scenario.movedTasks) },
-                { label: "Moved Groups", value: formatNumber(scenario.movedGroups) },
-                { label: "Core Tasks", value: formatNumber(scenario.coreTasks) },
-                { label: "Unreviewed Tasks", value: formatNumber(scenario.unreviewedTasks) },
-                { label: "Peak Before / After", value: `${formatDecimal(scenario.peakBefore, 1)} / ${formatDecimal(scenario.peakAfter, 1)} MH` },
-                { label: "Workload Std Dev", value: formatDecimal(scenario.workloadStdDev, 1) }
-              ])}
-              <div class="chart-frame simulation-chart equalized-chart-frame comparison-off">
-                <canvas id="taskEqualizedChart" aria-label="Task-level equalized package workload chart" role="img"></canvas>
-              </div>
-            `
-            : `
-              <div class="warning-box">No approved 5000-hour task master is available. Showing the previous interval-level chart as fallback context only.</div>
-              <p class="inspection-method" data-equalized-method>${getEqualizedComparisonText(program, selectedProgram)}</p>
-              <div class="chart-frame simulation-chart equalized-chart-frame ${state.showEqualizedComparison ? "comparison-on" : "comparison-off"}">
-                <canvas id="equalizedChart" aria-label="Equalized maintenance workload chart" role="img"></canvas>
-              </div>
-            `
-        }
-      </article>
+      ${renderWorkflowSteps(scenario ? "chart" : equalizationLoading ? "equalize" : baseModelReady ? "choose" : "start-base")}
 
       ${
-        hasTaskMaster
+        !baseModelReady
           ? `
             <article class="card">
-              <div class="section-header">
-                <div>
-                  <p class="card-kicker">Package Outputs</p>
-                  <h3>P1-P5 and Core Summary</h3>
-                </div>
-                <button class="secondary-button" data-reset-equalization type="button">Reset to Algorithm</button>
-              </div>
-              <div class="table-wrap">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Package</th>
-                      <th>Tasks</th>
-                      <th>Man-Hours</th>
-                      <th>Top Trades</th>
-                    </tr>
-                  </thead>
-                  <tbody>${renderPackageSummaryRows(scenario)}</tbody>
-                </table>
+              <div class="warning-box">${
+                baselineInputsReady
+                  ? "Start the base model on Page 2 before choosing an equalization plan."
+                  : "Complete the BELL 412 baseline inputs on Page 2 before starting equalization."
+              }</div>
+              <div class="toolbar-row">
+                <button class="primary-button" data-go-baseline type="button">Go to Baseline Heavy Check</button>
               </div>
             </article>
-
+          `
+          : equalizationLoading
+          ? renderEqualizationLoadingCard()
+          : !scenario
+          ? `
             <article class="card workflow-card">
               <div class="section-header">
                 <div>
-                  <p class="card-kicker">Task Movement Register</p>
-                  <h3>Manual Package Correction</h3>
+                  <p class="card-kicker">Step 2 - Choose Equalization</p>
+                  <h3>Select Equalization Plan</h3>
+                  <p class="data-note">${selectedProgram.model}</p>
                 </div>
-                <button class="secondary-button" data-download-movement type="button">Download Movement CSV</button>
+                <div class="inspection-total">
+                  <span>Manual Baseline</span>
+                  <strong>${formatDecimal(getManualBaselineTotalManHours(), 1)} MH</strong>
+                </div>
               </div>
-              <div class="scope-notice">Approved groups are indivisible. Changing the package for a grouped item moves every task in that group together.</div>
-              <div class="table-wrap tall-table">
-                <table>
-                  <thead>
-                    <tr>
-                      <th>Task / Group</th>
-                      <th>Description</th>
-                      <th>MH</th>
-                      <th>Movability</th>
-                      <th>Approved Group</th>
-                      <th>Original</th>
-                      <th>Proposed</th>
-                      <th>Movement Reason</th>
-                      <th>Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>${renderMovementRegisterRows(scenario)}</tbody>
-                </table>
+              <p class="inspection-method">The equalized chart uses the exact interval man-hour values entered in the Baseline Heavy Check page.</p>
+              ${renderEqualizationOptionButtons()}
+              <div class="toolbar-row">
+                <button class="primary-button" data-start-equalization type="button">Start Equalization</button>
+              </div>
+            </article>
+          `
+          : ""
+      }
+
+      ${
+        scenario
+          ? `
+            <article class="card">
+              <div class="chart-toolbar">
+                <div>
+                  <p class="card-kicker">Step 4 - Equalized Chart</p>
+                  <h3>${escapeHtml(scenario.title)}</h3>
+                </div>
+                <div class="simulation-toolbar-actions">
+                  ${renderEqualizedQuickPlanTabs()}
+                  <div class="tabs compact-tabs" role="tablist" aria-label="Simulation chart detail level">
+                    ${Object.entries(simulationViews)
+                      .map(
+                        ([key, label]) => `
+                          <button class="${key === state.simulationView ? "active" : ""}" data-simulation-view="${key}" type="button">
+                            ${label}
+                          </button>
+                        `
+                      )
+                      .join("")}
+                  </div>
+                  <button class="comparison-toggle ${state.showEqualizedComparison ? "active" : ""}" data-equalized-comparison type="button" aria-pressed="${state.showEqualizedComparison}">
+                    <span class="comparison-toggle-track" aria-hidden="true"><span></span></span>
+                    <span class="comparison-toggle-text">Base comparison ${state.showEqualizedComparison ? "On" : "Off"}</span>
+                  </button>
+                </div>
+              </div>
+              <p class="inspection-method">${getEqualizedComparisonText(program, selectedProgram)}</p>
+              ${renderMetricStrip([
+                { label: "Equalization Plan", value: program.title },
+                { label: "Manual Baseline Inputs", value: `${formatDecimal(getManualBaselineTotalManHours(), 1)} MH` },
+                { label: "5-Year Baseline Workload", value: `${formatDecimal(baselineSimulation.totalManHours, 1)} MH` },
+                { label: "5-Year Equalized Workload", value: `${formatDecimal(scenario.totalManHours, 1)} MH` },
+                { label: "Peak Baseline Period", value: `${formatDecimal(baselinePeak, 1)} MH` },
+                { label: "Peak Equalized Period", value: `${formatDecimal(equalizedPeak, 1)} MH` }
+              ])}
+              <div class="chart-frame equalized-chart-frame ${state.showEqualizedComparison ? "comparison-on" : "comparison-off"}">
+                <canvas id="equalizedChart" aria-label="Equalized maintenance workload simulation chart" role="img"></canvas>
+              </div>
+              <div class="toolbar-row">
+                <button class="primary-button" data-create-gantt type="button">Create Gantt Charts</button>
               </div>
             </article>
           `
@@ -3356,11 +4836,29 @@ function renderEqualizedInspection() {
   `;
 
   bindMaintenanceProgramSelector();
+  document.querySelector("[data-go-baseline]")?.addEventListener("click", () => {
+    state.section = "basic-inspection";
+    render();
+  });
   document.querySelectorAll("[data-equalized]").forEach((button) => {
     button.addEventListener("click", () => {
       state.equalized = button.dataset.equalized;
+      state.equalizationStarted = false;
+      state.equalizationLoading = false;
+      state.ganttCreated = false;
+      state.latestEqualizationScenario = null;
+      state.manualPackageAssignments = {};
       render();
     });
+  });
+  document.querySelectorAll("[data-equalized-quick]").forEach((button) => {
+    button.addEventListener("click", () => {
+      startEqualizationWithLoading(button.dataset.equalizedQuick);
+    });
+  });
+
+  document.querySelector("[data-start-equalization]")?.addEventListener("click", () => {
+    startEqualizationWithLoading(state.equalized);
   });
 
   document.querySelectorAll("[data-simulation-view]").forEach((button) => {
@@ -3370,65 +4868,33 @@ function renderEqualizedInspection() {
     });
   });
 
-  document.querySelector("[data-equalized-comparison]")?.addEventListener("click", (event) => {
+  document.querySelector("[data-equalized-comparison]")?.addEventListener("click", () => {
     state.showEqualizedComparison = !state.showEqualizedComparison;
-    const button = event.currentTarget;
-    const frame = document.querySelector(".equalized-chart-frame");
-    const method = document.querySelector("[data-equalized-method]");
-    const label = button.querySelector(".comparison-toggle-text");
-
-    button.classList.toggle("active", state.showEqualizedComparison);
-    button.setAttribute("aria-pressed", String(state.showEqualizedComparison));
-
-    if (label) {
-      label.textContent = `Base comparison ${state.showEqualizedComparison ? "On" : "Off"}`;
-    }
-
-    if (method) {
-      method.textContent = getEqualizedComparisonText(program, selectedProgram);
-    }
-
-    if (frame) {
-      frame.classList.toggle("comparison-on", state.showEqualizedComparison);
-      frame.classList.toggle("comparison-off", !state.showEqualizedComparison);
-      frame.classList.remove("is-rescaling");
-      void frame.offsetWidth;
-      frame.classList.add("is-rescaling");
-      window.setTimeout(() => frame.classList.remove("is-rescaling"), 680);
-    }
-
-    renderEqualizedChart(scenario, program);
-  });
-
-  document.querySelectorAll("[data-package-override]").forEach((select) => {
-    select.addEventListener("change", () => {
-      state.manualPackageAssignments[select.dataset.packageOverride] = select.value;
-      render();
-    });
-  });
-
-  document.querySelector("[data-reset-equalization]")?.addEventListener("click", () => {
-    state.manualPackageAssignments = {};
     render();
   });
 
-  document.querySelector("[data-download-movement]")?.addEventListener("click", () => {
-    downloadTextFile("task-movement-register.csv", toCsv(state.latestEqualizationScenario?.movementRegister || []));
+  document.querySelector("[data-create-gantt]")?.addEventListener("click", () => {
+    state.ganttCreated = true;
+    state.latestEqualizationScenario = scenario;
+    state.section = "inspection-chart";
+    render();
   });
 
-  if (hasTaskMaster) {
-    renderTaskEqualizationChart(scenario);
-  } else {
+  if (scenario) {
     renderEqualizedChart(scenario, program);
   }
 }
 
 function getScenarioForGantt() {
-  if (state.latestEqualizationScenario) {
+  if (!state.ganttCreated || !state.equalizationStarted) {
+    return null;
+  }
+
+  if (state.latestEqualizationScenario?.percentKey === state.equalized) {
     return state.latestEqualizationScenario;
   }
 
-  if (getReviewedTasks().length) {
+  if (getCleanMaintenanceTasks().length) {
     state.latestEqualizationScenario = buildEqualizationScenarioFromTasks(state.equalized);
     return state.latestEqualizationScenario;
   }
@@ -3436,12 +4902,12 @@ function getScenarioForGantt() {
   return null;
 }
 
-function getTradesForScenarioPackage(scenario, packageName) {
+function getTradesForScenarioPackage(scenario, packageName, packageField = scenario.packageField || "finalPackage") {
   const trades = uniqueValues(
-    scenario.movementRegister.filter((row) => row.proposedPackage === packageName),
+    scenario.movementRegister.filter((row) => row[packageField] === packageName),
     "trade"
   );
-  return trades.length ? trades : ["OTHER"];
+  return trades.length ? trades : ["AP", "REI", "SM", "P", "PAINTER", "AP / REI", "AP / SM", "AP / P", "OTHER"];
 }
 
 function renderGanttInputs(scenario) {
@@ -3449,26 +4915,7 @@ function renderGanttInputs(scenario) {
   return `
     <div class="form-grid gantt-input-grid">
       <label>
-        <span>Inspection Start Date</span>
-        <input data-gantt-input="startDate" type="date" value="${escapeHtml(state.ganttInputs.startDate)}" />
-      </label>
-      <label>
-        <span>Working Days / Week</span>
-        <input data-gantt-input="workingDaysPerWeek" type="number" min="1" max="7" step="1" value="${state.ganttInputs.workingDaysPerWeek}" />
-      </label>
-      <label>
-        <span>Weekend Work</span>
-        <select data-gantt-input="weekendWork">
-          <option value="false" ${!state.ganttInputs.weekendWork ? "selected" : ""}>Off</option>
-          <option value="true" ${state.ganttInputs.weekendWork ? "selected" : ""}>On</option>
-        </select>
-      </label>
-      <label>
-        <span>Number of Shifts</span>
-        <input data-gantt-input="shifts" type="number" min="0" step="1" value="${state.ganttInputs.shifts}" />
-      </label>
-      <label>
-        <span>Hours / Shift</span>
+        <span>Working Hours / Day</span>
         <input data-gantt-input="hoursPerShift" type="number" min="0" step="0.5" value="${state.ganttInputs.hoursPerShift}" />
       </label>
       <label>
@@ -3479,7 +4926,7 @@ function renderGanttInputs(scenario) {
         .map(
           (trade) => `
             <label>
-              <span>${escapeHtml(trade)} Personnel</span>
+              <span>${escapeHtml(getTradeDisplayLabel(trade))}</span>
               <input data-gantt-trade="${escapeHtml(trade)}" type="number" min="0" step="1" value="${
                 state.ganttInputs.tradeCapacity[trade] ?? state.ganttInputs.tradeCapacity.OTHER ?? 0
               }" />
@@ -3503,9 +4950,9 @@ function renderGanttRows(schedule) {
           <td>${escapeHtml(row.package)}</td>
           <td><strong>${escapeHtml(row.label)}</strong><div class="tail-note">${formatNumber(row.tasks)} task(s)</div></td>
           <td>${escapeHtml(row.phase)}</td>
-          <td>${escapeHtml(row.trade)}</td>
-          <td>${escapeHtml(row.startDate)}</td>
-          <td>${escapeHtml(row.finishDate)}</td>
+          <td>${escapeHtml(row.tradeLabel || getTradeDisplayLabel(row.trade))}</td>
+          <td>Day ${formatDecimal(row.startDay, 1)}</td>
+          <td>Day ${formatDecimal(row.endDay, 1)}</td>
           <td>${formatDecimal(row.durationDays, 1)}</td>
           <td>${formatDecimal(row.plannedMh, 1)}</td>
           <td>${row.validationMessage ? statusBadge("warning", row.validationMessage) : formatNumber(row.assignedPersonnel)}</td>
@@ -3515,20 +4962,187 @@ function renderGanttRows(schedule) {
     .join("");
 }
 
+function renderGanttTaskRows(scenario) {
+  return scenario.movementRegister
+    .filter((row) => row.finalPackage === state.selectedGanttPackage)
+    .sort((a, b) => getPhaseRank(a.phase) - getPhaseRank(b.phase) || a.sequence - b.sequence)
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.taskCardNo)}</strong></td>
+          <td>${escapeHtml(row.phase || "-")}</td>
+          <td>${escapeHtml(getTradeDisplayLabel(row.trade))}</td>
+          <td>${escapeHtml(row.tradeGroupId)}</td>
+          <td>${formatDecimal(row.plannedMh, 1)}</td>
+          <td>${escapeHtml(row.shortDescription)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function buildResourceLoadingRows(schedule) {
+  const maxDay = Math.ceil(Math.max(...schedule.map((row) => row.endDay), 0));
+  const rows = [];
+  for (let day = 0; day <= maxDay; day += 1) {
+    const activeRows = schedule.filter((row) => row.startDay < day + 1 && row.endDay > day);
+    const byTrade = new Map();
+    activeRows.forEach((row) => {
+      byTrade.set(row.trade, Math.max(byTrade.get(row.trade) || 0, Number(row.assignedPersonnel) || 0));
+    });
+    byTrade.forEach((personnel, trade) => {
+      rows.push({ day, trade, personnel });
+    });
+  }
+  return rows;
+}
+
+function getPackageGroundDayComparison(scenario) {
+  return scenario.packages.map((pkg) => {
+    const schedule = generateGanttSchedule(scenario, pkg);
+    const days = schedule.length ? Math.max(...schedule.map((row) => row.endDay), 0) : 0;
+    return {
+      package: pkg,
+      estimatedDays: days,
+      tasks: schedule.reduce((sum, row) => sum + row.tasks, 0),
+      manHours: schedule.reduce((sum, row) => sum + row.plannedMh, 0)
+    };
+  });
+}
+
+function renderGroundDayComparisonRows(rows) {
+  return rows
+    .map(
+      (row) => `
+        <tr>
+          <td><strong>${escapeHtml(row.package)}</strong></td>
+          <td>${formatNumber(row.tasks)}</td>
+          <td>${formatDecimal(row.manHours, 1)}</td>
+          <td>${formatDecimal(row.estimatedDays, 1)}</td>
+        </tr>
+      `
+    )
+    .join("");
+}
+
+function renderPlotlyResourceLoading(schedule) {
+  const target = document.getElementById("resourceChart");
+  if (!target || !window.Plotly) {
+    return;
+  }
+
+  const rows = buildResourceLoadingRows(schedule);
+  if (!rows.length) {
+    target.innerHTML = `<div class="chart-empty"><strong>No resource load.</strong><p>Enter personnel for the required trades.</p></div>`;
+    return;
+  }
+
+  const trades = Array.from(new Set(rows.map((row) => row.trade)));
+  const maxDay = Math.max(...rows.map((row) => row.day), 0);
+  const days = Array.from({ length: maxDay + 1 }, (_, index) => index);
+  const colors = ["#1D4ED8", "#059669", "#D97706", "#DC2626", "#7C3AED", "#0F766E", "#64748B"];
+  const traces = trades.map((trade, index) => ({
+    type: "bar",
+    name: getTradeDisplayLabel(trade),
+    x: days,
+    y: days.map((day) => rows.find((row) => row.day === day && row.trade === trade)?.personnel || 0),
+    marker: { color: colors[index % colors.length] },
+    hovertemplate: `Day %{x}<br>${escapeHtml(getTradeDisplayLabel(trade))}: %{y} personnel<extra></extra>`
+  }));
+
+  Plotly.newPlot(
+    target,
+    traces,
+    {
+      barmode: "stack",
+      margin: { l: 54, r: 18, t: 20, b: 42 },
+      paper_bgcolor: "#FFFFFF",
+      plot_bgcolor: "#FFFFFF",
+      font: { family: "Montserrat, Helvetica Neue, Arial, sans-serif", color: chartColors.slate },
+      xaxis: { title: "Inspection Day", gridcolor: chartColors.grid, tickprefix: "Day " },
+      yaxis: { title: "Personnel Demand", gridcolor: chartColors.grid },
+      legend: { orientation: "h", y: -0.28 },
+      hovermode: "closest"
+    },
+    { responsive: true, displayModeBar: false }
+  );
+}
+
 function renderInspectionGantt() {
+  const baselineReady = hasCompleteBaselineManHours() && state.baseModelStarted;
+  const ganttScenario = state.latestEqualizationScenario;
+  content.innerHTML = `
+    <section class="view-grid">
+      <div class="section-header">
+        <div>
+          <p class="section-kicker">Page 4</p>
+          <h2>Inspection Gantt & Ground Time</h2>
+        </div>
+      </div>
+
+      <div class="maintenance-program-sticky">
+        <span>Maintenance Program</span>
+        ${renderMaintenanceProgramSelector()}
+      </div>
+
+      ${renderWorkflowSteps(state.ganttCreated ? "gantt" : baselineReady ? "gantt-button" : "start-base")}
+
+      <article class="card workflow-card">
+        <div class="section-header">
+          <div>
+            <p class="card-kicker">Gantt Chart</p>
+            <h3>${state.ganttCreated ? "Gantt Chart Placeholder" : "Create Gantt Charts From Page 3"}</h3>
+          </div>
+          ${
+            ganttScenario
+              ? `<div class="inspection-total"><span>Selected Plan</span><strong>${escapeHtml(ganttScenario.title || "Equalized Plan")}</strong></div>`
+              : ""
+          }
+        </div>
+        ${
+          state.ganttCreated
+            ? `
+              <div class="scope-notice">
+                This page is ready for the Gantt chart algorithm. The current equalized baseline model has been passed from Page 3.
+              </div>
+              ${renderMetricStrip([
+                { label: "Maintenance Program", value: "BELL 412" },
+                { label: "Equalization Plan", value: ganttScenario?.title || "-" },
+                { label: "Manual Baseline Inputs", value: `${formatDecimal(getManualBaselineTotalManHours(), 1)} MH` },
+                { label: "Simulation Window", value: `${formatNumber(simulationMonths)} months` }
+              ])}
+            `
+            : `<div class="warning-box">Start the base model on Page 2, choose an equalization plan on Page 3, then click Create Gantt Charts to open this page.</div>`
+        }
+        <div class="toolbar-row">
+          <button class="secondary-button" data-back-to-equalization type="button">Back to Equalization Planning</button>
+        </div>
+      </article>
+    </section>
+  `;
+
+  bindMaintenanceProgramSelector();
+  document.querySelector("[data-back-to-equalization]")?.addEventListener("click", () => {
+    state.section = "equalized-inspection";
+    render();
+  });
+  return;
+
   const scenario = getScenarioForGantt();
+  if (scenario && !scenario.packages.includes(state.selectedGanttPackage)) {
+    state.selectedGanttPackage = scenario.packages[0];
+  }
   const schedule = scenario ? generateGanttSchedule(scenario, state.selectedGanttPackage) : [];
   const totalManHours = schedule.reduce((sum, row) => sum + row.plannedMh, 0);
   const totalTasks = schedule.reduce((sum, row) => sum + row.tasks, 0);
-  const estimatedGroundTime = schedule.length
-    ? Math.max(...schedule.map((row) => dateToUtc(row.finishDate))) - dateToUtc(state.ganttInputs.startDate)
-    : 0;
-  const estimatedDays = estimatedGroundTime ? Math.max(1, Math.ceil(estimatedGroundTime / (24 * 60 * 60 * 1000)) + 1) : 0;
-  const peakPersonnel = schedule.reduce((peak, row) => Math.max(peak, Number(row.assignedPersonnel) || 0), 0);
+  const estimatedDays = schedule.length ? Math.max(...schedule.map((row) => row.endDay), 0) : 0;
   const byTrade = summarizeWorkload(
     schedule.map((row) => ({ trade: row.trade, plannedMh: row.plannedMh })),
     "trade"
   );
+  const largestTrade = byTrade[0]?.label ? `${getTradeDisplayLabel(byTrade[0].label)} (${formatDecimal(byTrade[0].manHours, 1)} MH)` : "-";
+  const zeroCapacityWarnings = schedule.filter((row) => row.validationMessage);
+  const packageDayComparison = scenario ? getPackageGroundDayComparison(scenario) : [];
 
   content.innerHTML = `
     <section class="view-grid">
@@ -3545,28 +5159,27 @@ function renderInspectionGantt() {
             <article class="card workflow-card">
               <div class="section-header">
                 <div>
-                  <p class="card-kicker">Preliminary Planning Estimate</p>
-                  <h3>Package Ground-Time Model</h3>
+                  <p class="card-kicker">Step 8 - View Gantt</p>
+                  <h3>Relative-Day Gantt Chart</h3>
                 </div>
                 <div class="tabs compact-tabs" role="tablist" aria-label="Gantt package selector">
-                  ${heavyCheckPackages
+                  ${scenario.packages
                     .map(
                       (pkg) => `<button class="${state.selectedGanttPackage === pkg ? "active" : ""}" data-gantt-package="${pkg}" type="button">${pkg}</button>`
                     )
                     .join("")}
                 </div>
               </div>
-              <div class="scope-notice">Preliminary planning estimate based on entered manpower, shifts, productivity, and task-master data. This is not an approved production schedule.</div>
+              ${renderWorkflowSteps("gantt")}
+              <div class="scope-notice">Preliminary ground-time estimate based on planned man-hours, available personnel, phase sequence, and productivity.</div>
               ${renderGanttInputs(scenario)}
+              ${zeroCapacityWarnings.length ? `<div class="warning-box">${formatNumber(zeroCapacityWarnings.length)} schedule item(s) cannot calculate duration because a required trade has zero personnel or zero productive hours.</div>` : ""}
               ${renderMetricStrip([
                 { label: "Selected Package", value: state.selectedGanttPackage },
-                { label: "Package Tasks", value: formatNumber(totalTasks) },
-                { label: "Package Man-Hours", value: `${formatDecimal(totalManHours, 1)} MH` },
-                { label: "Estimated Ground Time", value: `${formatNumber(estimatedDays)} days` },
-                { label: "Working Days / Week", value: formatNumber(state.ganttInputs.workingDaysPerWeek) },
-                { label: "Peak Personnel Input", value: formatNumber(peakPersonnel) },
-                { label: "Earliest Start", value: schedule[0]?.startDate || "-" },
-                { label: "Estimated Finish", value: schedule[schedule.length - 1]?.finishDate || "-" }
+                { label: "Total Tasks", value: formatNumber(totalTasks) },
+                { label: "Total Man-Hours", value: `${formatDecimal(totalManHours, 1)} MH` },
+                { label: "Estimated Days", value: `${formatDecimal(estimatedDays, 1)} days` },
+                { label: "Largest Trade Workload", value: largestTrade }
               ])}
               <div class="plot-frame" id="ganttChart"></div>
             </article>
@@ -3574,41 +5187,58 @@ function renderInspectionGantt() {
             <article class="card">
               <div class="section-header">
                 <div>
-                  <p class="card-kicker">Schedule Data</p>
-                  <h3>Phase / Approved-Group Schedule</h3>
-                </div>
-                <div class="toolbar-row compact-toolbar">
-                  <button class="secondary-button" data-export="task-master" type="button">Task Master CSV</button>
-                  <button class="secondary-button" data-export="review" type="button">Review CSV</button>
-                  <button class="secondary-button" data-export="assignments" type="button">Assignments CSV</button>
-                  <button class="secondary-button" data-export="gantt" type="button">Gantt CSV</button>
-                  <button class="secondary-button" data-export="summary" type="button">Scenario Summary CSV</button>
+                  <p class="card-kicker">Package Comparison</p>
+                  <h3>Estimated Ground Days</h3>
                 </div>
               </div>
-              <div class="breakdown-grid">
-                ${renderWorkloadBreakdownTable("Workload by Trade", byTrade)}
-              </div>
-              <div class="table-wrap tall-table">
+              <div class="table-wrap compact-table">
                 <table>
                   <thead>
                     <tr>
                       <th>Package</th>
-                      <th>Task Group / Phase Item</th>
-                      <th>Phase</th>
-                      <th>Trade</th>
-                      <th>Start</th>
-                      <th>Finish</th>
-                      <th>Duration</th>
-                      <th>MH</th>
-                      <th>Personnel / Warning</th>
+                      <th>Tasks</th>
+                      <th>Man-Hours</th>
+                      <th>Estimated Days</th>
                     </tr>
                   </thead>
-                  <tbody>${renderGanttRows(schedule)}</tbody>
+                  <tbody>${renderGroundDayComparisonRows(packageDayComparison)}</tbody>
                 </table>
               </div>
             </article>
+
+            <article class="card">
+              <div class="section-header">
+                <div>
+                  <p class="card-kicker">Schedule Data</p>
+                  <h3>${state.ganttDetailLevel === "group" ? "Task-Group Schedule" : "Phase-Level Schedule"}</h3>
+                </div>
+                <div class="toolbar-row compact-toolbar">
+                  <button class="secondary-button" data-export="assignments" type="button">Assignments CSV</button>
+                  <button class="secondary-button" data-export="gantt" type="button">Gantt CSV</button>
+                  <button class="secondary-button" data-export="ground-assumptions" type="button">Assumptions CSV</button>
+                </div>
+              </div>
+              <details class="soft-details">
+                <summary>View Detailed Tasks</summary>
+                <div class="table-wrap tall-table">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Task Card</th>
+                        <th>Phase</th>
+                        <th>Trade</th>
+                        <th>Trade Group</th>
+                        <th>Man-Hours</th>
+                        <th>Description</th>
+                      </tr>
+                    </thead>
+                    <tbody>${renderGanttTaskRows(scenario)}</tbody>
+                  </table>
+                </div>
+              </details>
+            </article>
           `
-          : `<article class="card"><div class="warning-box">No equalization result exists yet. Complete Page 1 task-master approval, Page 2 engineering review, and Page 3 equalization planning before generating a Gantt schedule.</div></article>`
+          : `<article class="card"><div class="warning-box">Create the Gantt chart from Page 3 first. Select an equalization option, click Start Equalization, then click Create Gantt Chart.</div></article>`
       }
     </section>
   `;
@@ -3627,10 +5257,17 @@ function bindGanttControls(schedule, scenario) {
     });
   });
 
+  document.querySelectorAll("[data-gantt-detail]").forEach((button) => {
+    button.addEventListener("click", () => {
+      state.ganttDetailLevel = button.dataset.ganttDetail;
+      render();
+    });
+  });
+
   document.querySelectorAll("[data-gantt-input]").forEach((input) => {
     input.addEventListener("change", () => {
       const key = input.dataset.ganttInput;
-      state.ganttInputs[key] = key === "weekendWork" ? input.value === "true" : input.type === "number" ? Number(input.value) : input.value;
+      state.ganttInputs[key] = input.type === "number" ? Number(input.value) : input.value;
       render();
     });
   });
@@ -3642,29 +5279,7 @@ function bindGanttControls(schedule, scenario) {
     });
   });
 
-  document.querySelectorAll("[data-export]").forEach((button) => {
-    button.addEventListener("click", () => {
-      const kind = button.dataset.export;
-      if (kind === "task-master") downloadTextFile("validated-5000h-task-master.csv", toCsv(state.approvedTaskMaster));
-      if (kind === "review") downloadTextFile("engineering-review-register.csv", toCsv(getReviewedTasks()));
-      if (kind === "assignments") downloadTextFile("equalized-package-assignments.csv", toCsv(scenario?.movementRegister || []));
-      if (kind === "gantt") downloadTextFile("inspection-gantt-schedule.csv", toCsv(schedule));
-      if (kind === "summary")
-        downloadTextFile(
-          "scenario-summary.csv",
-          toCsv([
-            {
-              requestedPercent: scenario?.requestedPercent,
-              achievedPercent: scenario?.achievedPercent,
-              eligibleManHours: scenario?.eligibleManHours,
-              redistributedManHours: scenario?.redistributedManHours,
-              limitations:
-                "Preliminary beta decision-support output only. Not an approved maintenance program or production schedule."
-            }
-          ])
-        );
-    });
-  });
+  bindExportControls(scenario, schedule);
 }
 
 function renderPlotlyGantt(schedule) {
@@ -3685,9 +5300,9 @@ function renderPlotlyGantt(schedule) {
   const traces = schedule.map((row, index) => ({
     type: "scatter",
     mode: "lines+markers",
-    x: [row.startDate, row.finishDate],
+    x: [row.startDay, row.endDay],
     y: [`${row.id}. ${row.label}`, `${row.id}. ${row.label}`],
-    name: row.trade,
+    name: row.tradeLabel || getTradeDisplayLabel(row.trade),
     line: {
       color: tradeColors[index % tradeColors.length],
       width: 16
@@ -3699,12 +5314,14 @@ function renderPlotlyGantt(schedule) {
     hovertemplate:
       `<b>${escapeHtml(row.label)}</b><br>` +
       `Package: ${escapeHtml(row.package)}<br>` +
-      `Trade: ${escapeHtml(row.trade)}<br>` +
+      `Trade: ${escapeHtml(row.tradeLabel || getTradeDisplayLabel(row.trade))}<br>` +
       `Phase: ${escapeHtml(row.phase)}<br>` +
-      `Start: ${escapeHtml(row.startDate)}<br>` +
-      `Finish: ${escapeHtml(row.finishDate)}<br>` +
+      `Start: Day ${formatDecimal(row.startDay, 1)}<br>` +
+      `Finish: Day ${formatDecimal(row.endDay, 1)}<br>` +
       `Duration: ${formatDecimal(row.durationDays, 1)} days<br>` +
-      `MH: ${formatDecimal(row.plannedMh, 1)}<extra></extra>`,
+      `MH: ${formatDecimal(row.plannedMh, 1)}<br>` +
+      `Personnel: ${formatNumber(row.assignedPersonnel)}<br>` +
+      `Tasks: ${formatNumber(row.tasks)}<extra></extra>`,
     showlegend: index === schedule.findIndex((item) => item.trade === row.trade)
   }));
 
@@ -3716,7 +5333,7 @@ function renderPlotlyGantt(schedule) {
       paper_bgcolor: "#FFFFFF",
       plot_bgcolor: "#FFFFFF",
       font: { family: "Montserrat, Helvetica Neue, Arial, sans-serif", color: chartColors.slate },
-      xaxis: { title: "Calendar Date", type: "date", gridcolor: chartColors.grid },
+      xaxis: { title: "Inspection Day", type: "linear", gridcolor: chartColors.grid, tickprefix: "Day " },
       yaxis: { autorange: "reversed", automargin: true },
       legend: { orientation: "h", y: -0.2 },
       hovermode: "closest"
@@ -3852,7 +5469,7 @@ function renderIntervalChart() {
             afterLabel: (context) => {
               const item = parentTasks[context.dataIndex];
               return [
-                `Child Tasks: ${formatNumber(item.childTasks)}`,
+                `Task Cards: ${formatNumber(item.childTasks)}`,
                 `Average: ${formatDecimal(item.averageManHoursPerTask, 2)} Man Hours per task`,
                 `Note: ${item.currentNote}`
               ];

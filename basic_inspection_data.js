@@ -1,7 +1,7 @@
 window.BASIC_INSPECTION_DATA = {
   "model": "BELL 412",
   "sourceWorkbook": "MAINTENANCE PROGRAM BELL 412 R01.xlsx",
-  "methodology": "Primary inspection Man Hours use the confirmed package totals supplied for the 25-hour, 100-hour, 300-hour, 600-hour, and 5000-hour blocks. Corrosion-control CSSD rows retain the previous estimating assumption until confirmed Man Hours are supplied. Applicability is read from the workbook so OCA and OCD maintenance programs are modeled separately.",
+  "methodology": "Primary inspection Man Hours use the confirmed package totals supplied for the 25-hour, 100-hour, 300-hour, and 600-hour blocks. The 5000-hour block is supplied by the uploaded heavy-check task master and is not estimated from a package-level assumption. Corrosion-control CSSD rows retain the previous estimating assumption until confirmed Man Hours are supplied. Applicability is read from the workbook so OCA and OCD maintenance programs are modeled separately.",
   "aircraftPrograms": [
     {
       "key": "OCA",
@@ -88,9 +88,9 @@ window.BASIC_INSPECTION_DATA = {
           "calendarLimitDays": 1825,
           "childTasks": 75,
           "totalChildTasks": 75,
-          "averageManHoursPerTask": 9.3333,
-          "manHours": 700.0,
-          "currentNote": "Package",
+          "averageManHoursPerTask": 0.0,
+          "manHours": 0.0,
+          "currentNote": "Awaiting approved 5000H task master",
           "taskTitle": "5000 HOURS - PART B",
           "applicability": [
             "OCA",
@@ -137,7 +137,7 @@ window.BASIC_INSPECTION_DATA = {
       ],
       "totals": {
         "childTasks": 691,
-        "manHours": 937.0
+        "manHours": 237.0
       }
     },
     {
@@ -225,9 +225,9 @@ window.BASIC_INSPECTION_DATA = {
           "calendarLimitDays": 1825,
           "childTasks": 75,
           "totalChildTasks": 75,
-          "averageManHoursPerTask": 9.3333,
-          "manHours": 700.0,
-          "currentNote": "Package",
+          "averageManHoursPerTask": 0.0,
+          "manHours": 0.0,
+          "currentNote": "Awaiting approved 5000H task master",
           "taskTitle": "5000 HOURS - PART B",
           "applicability": [
             "OCA",
@@ -274,7 +274,7 @@ window.BASIC_INSPECTION_DATA = {
       ],
       "totals": {
         "childTasks": 691,
-        "manHours": 937.0
+        "manHours": 237.0
       }
     }
   ],
@@ -359,9 +359,9 @@ window.BASIC_INSPECTION_DATA = {
       "calendarLimitDays": 1825,
       "childTasks": 75,
       "totalChildTasks": 75,
-      "averageManHoursPerTask": 9.3333,
-      "manHours": 700.0,
-      "currentNote": "Package",
+      "averageManHoursPerTask": 0.0,
+      "manHours": 0.0,
+      "currentNote": "Awaiting approved 5000H task master",
       "taskTitle": "5000 HOURS - PART B",
       "applicability": [
         "OCA",
@@ -408,6 +408,6 @@ window.BASIC_INSPECTION_DATA = {
   ],
   "totals": {
     "childTasks": 691,
-    "manHours": 937.0
+    "manHours": 237.0
   }
 };

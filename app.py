@@ -6,14 +6,9 @@ import hmac
 import html
 import json
 import mimetypes
-from io import BytesIO
 from pathlib import Path
 
 import streamlit as st
-
-from process_basic_inspection import build_basic_inspection_data
-from process_heavy_check import empty_heavy_check_payload
-from process_utilization import process_utilization
 
 
 APP_DIR = Path(__file__).resolve().parent
@@ -67,20 +62,6 @@ def asset_data_uri(file_name: str | Path) -> str:
     return f"data:{mime_type};base64,{encoded}"
 
 
-@st.cache_data(show_spinner="Processing utilization workbook...")
-def process_utilization_upload(file_bytes: bytes, file_name: str) -> dict:
-    buffer = BytesIO(file_bytes)
-    buffer.name = file_name
-    return process_utilization(buffer)
-
-
-@st.cache_data(show_spinner="Processing maintenance program workbook...")
-def process_basic_inspection_upload(file_bytes: bytes, file_name: str) -> dict:
-    buffer = BytesIO(file_bytes)
-    buffer.name = file_name
-    return build_basic_inspection_data(buffer)
-
-
 def with_embedded_aircraft_images(payload: dict) -> dict:
     data = copy.deepcopy(payload)
 
@@ -92,7 +73,7 @@ def with_embedded_aircraft_images(payload: dict) -> dict:
     return data
 
 
-def build_dashboard_html(utilization_payload: dict, basic_payload: dict, heavy_check_payload: dict | None = None) -> str:
+def build_dashboard_html(utilization_payload: dict, basic_payload: dict) -> str:
     html = read_text_asset("index.html")
     styles = read_text_asset("styles.css").replace(
         'url("background_image.png")',
@@ -136,10 +117,6 @@ def build_dashboard_html(utilization_payload: dict, basic_payload: dict, heavy_c
     html = html.replace(
         '<script src="basic_inspection_data.js"></script>',
         f"<script>window.BASIC_INSPECTION_DATA = {json.dumps(basic_payload)};</script>",
-    )
-    html = html.replace(
-        '<script src="heavy_check_data.js"></script>',
-        f"<script>window.HEAVY_CHECK_DATA = {json.dumps(heavy_check_payload or empty_heavy_check_payload())};</script>",
     )
     html = html.replace(
         '<script src="app.js"></script>',
@@ -629,39 +606,26 @@ def render_authenticated_styles() -> None:
     )
 
 
-def load_utilization_data(uploaded_file) -> tuple[dict, str]:
-    if uploaded_file is not None:
-        return (
-            process_utilization_upload(uploaded_file.getvalue(), uploaded_file.name),
-            f"Using uploaded utilization workbook: {uploaded_file.name}",
-        )
-
-    return read_json_asset(UTILIZATION_JSON.name), "Using bundled utilization snapshot. Upload a workbook for live data."
+def load_utilization_data() -> dict:
+    return read_json_asset(UTILIZATION_JSON.name)
 
 
-def load_basic_inspection_data(uploaded_file) -> tuple[dict, str]:
-    if uploaded_file is not None:
-        return (
-            process_basic_inspection_upload(uploaded_file.getvalue(), uploaded_file.name),
-            f"Using uploaded maintenance program workbook: {uploaded_file.name}",
-        )
-
-    return read_json_asset(BASIC_INSPECTION_JSON.name), "Using bundled basic-inspection snapshot."
+def load_basic_inspection_data() -> dict:
+    return read_json_asset(BASIC_INSPECTION_JSON.name)
 
 
 def render_main_app() -> None:
     render_authenticated_styles()
 
     try:
-        utilization_data, _ = load_utilization_data(None)
-        basic_inspection_data, _ = load_basic_inspection_data(None)
-        heavy_check_data = empty_heavy_check_payload()
+        utilization_data = load_utilization_data()
+        basic_inspection_data = load_basic_inspection_data()
     except Exception as exc:
-        st.error(f"Workbook processing failed: {exc}")
+        st.error(f"Dashboard data loading failed: {exc}")
         st.stop()
 
     st.iframe(
-        build_dashboard_html(utilization_data, basic_inspection_data, heavy_check_data),
+        build_dashboard_html(utilization_data, basic_inspection_data),
         width="stretch",
         height=1080,
     )
