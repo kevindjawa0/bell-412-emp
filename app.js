@@ -121,7 +121,9 @@ const state = {
   showEqualizedComparison: false,
   activeDatePicker: null,
   calendarMonth: null,
-  selectedRegistrations: utilizationData.aircraft.map((aircraft) => aircraft.registration),
+  selectedRegistrations: [],
+  aircraftChoiceCompleted: false,
+  aircraftRevealPending: false,
   selectedMaintenanceProgram: maintenancePrograms[0]?.key || "BELL412",
   manualIntervalManHours: Object.fromEntries(baselineIntervalKeys.map((intervalKey) => [intervalKey, ""])),
   manualIntervalTaskCards: Object.fromEntries(manualTaskCardIntervalKeys.map((intervalKey) => [intervalKey, ""])),
@@ -409,12 +411,13 @@ function getDefaultSelectedRegistrations() {
 }
 
 function resetUtilizationState() {
-  state.selectedRegistrations = getDefaultSelectedRegistrations();
+  state.selectedRegistrations = [];
+  state.aircraftChoiceCompleted = false;
+  state.aircraftRevealPending = false;
   utilizationFilter.startDate = utilizationData.validDates[0] || utilizationData.window.start;
   utilizationFilter.endDate = utilizationData.validDates[utilizationData.validDates.length - 1] || utilizationData.window.end;
   state.activeDatePicker = null;
   state.calendarMonth = null;
-  normalizeDateRangeForSelectedAircraft();
 }
 
 function afterNextPaint(callback) {
@@ -1062,6 +1065,41 @@ function renderKpiCards(summary) {
   `;
 }
 
+function renderAircraftChoiceScreen() {
+  return `
+    <section class="aircraft-choice-screen" aria-labelledby="aircraftChoiceTitle">
+      <div class="aircraft-choice-copy">
+        <p class="card-kicker">Aircraft Utilization</p>
+        <h2 id="aircraftChoiceTitle">Choose an aircraft</h2>
+        <p>Select the aircraft model to open its utilization dashboard.</p>
+      </div>
+      <div class="aircraft-choice-grid">
+        ${utilizationData.aircraft
+          .map(
+            (aircraft) => `
+              <button
+                class="aircraft-choice-card"
+                data-aircraft-choice="${escapeHtml(aircraft.registration)}"
+                type="button"
+                aria-label="Open utilization dashboard for ${escapeHtml(aircraft.model)} ${escapeHtml(aircraft.registration)}"
+              >
+                <img src="${escapeHtml(aircraft.image)}" alt="${escapeHtml(aircraft.model)} ${escapeHtml(aircraft.registration)}" />
+                <span class="aircraft-choice-body">
+                  <span>
+                    <strong>${escapeHtml(aircraft.model)}</strong>
+                    <small>${escapeHtml(aircraft.registration)}</small>
+                  </span>
+                  <span class="choice-action">Open dashboard</span>
+                </span>
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+    </section>
+  `;
+}
+
 function renderAircraftSelector() {
   return utilizationData.aircraft
     .map((aircraft) => {
@@ -1082,19 +1120,30 @@ function renderAircraftSelector() {
     .join("");
 }
 
-function toggleAircraftSelection(registration) {
-  const isSelected = state.selectedRegistrations.includes(registration);
-
-  if (isSelected && state.selectedRegistrations.length === 1) {
+function chooseAircraftForUtilization(registration) {
+  const aircraftExists = utilizationData.aircraft.some((aircraft) => aircraft.registration === registration);
+  if (!aircraftExists) {
     return;
   }
 
-  if (isSelected) {
-    state.selectedRegistrations = state.selectedRegistrations.filter((item) => item !== registration);
-  } else {
-    state.selectedRegistrations = [...state.selectedRegistrations, registration];
+  state.selectedRegistrations = [registration];
+  state.aircraftChoiceCompleted = true;
+  state.aircraftRevealPending = true;
+  utilizationFilter.startDate = utilizationData.validDates[0] || utilizationData.window.start;
+  utilizationFilter.endDate = utilizationData.validDates[utilizationData.validDates.length - 1] || utilizationData.window.end;
+  state.activeDatePicker = null;
+  state.calendarMonth = null;
+  normalizeDateRangeForSelectedAircraft();
+  render();
+}
+
+function toggleAircraftSelection(registration) {
+  if (state.selectedRegistrations.includes(registration) && state.selectedRegistrations.length === 1) {
+    return;
   }
 
+  state.selectedRegistrations = [registration];
+  state.aircraftChoiceCompleted = true;
   normalizeDateRangeForSelectedAircraft();
 
   const filterContainer = document.getElementById("aircraftFilterControls");
@@ -1104,6 +1153,12 @@ function toggleAircraftSelection(registration) {
   }
 
   updateUtilizationSection();
+}
+
+function bindAircraftChoiceControls() {
+  document.querySelectorAll("[data-aircraft-choice]").forEach((button) => {
+    button.addEventListener("click", () => chooseAircraftForUtilization(button.dataset.aircraftChoice));
+  });
 }
 
 function bindAircraftFilterControls() {
@@ -1301,11 +1356,20 @@ function bindHeavyCheckSetupControls() {
 }
 
 function renderDataSource() {
+  if (!state.aircraftChoiceCompleted || !state.selectedRegistrations.length) {
+    pageTitle.textContent = "Choose an aircraft";
+    content.innerHTML = renderAircraftChoiceScreen();
+    bindAircraftChoiceControls();
+    bindHeavyCheckSetupControls();
+    return;
+  }
+
   normalizeDateRangeForSelectedAircraft();
   const initialSummary = calculateUtilizationWindow();
+  const revealClass = state.aircraftRevealPending ? " utilization-dashboard-reveal" : "";
 
   content.innerHTML = `
-    <section class="view-grid">
+    <section class="view-grid${revealClass}">
       <div class="utilization-header">
         <h2>AIRCRAFT UTILIZATION</h2>
         <div class="date-filter-panel" aria-label="Utilization date range picker">
@@ -1380,7 +1444,7 @@ function renderDataSource() {
   });
   bindAircraftFilterControls();
   bindAircraftImagePreview();
-  document.getElementById("dateCalendar").addEventListener("click", (event) => {
+  document.getElementById("dateCalendar")?.addEventListener("click", (event) => {
     const navButton = event.target.closest("[data-calendar-nav]");
     const dateButton = event.target.closest("[data-calendar-date]");
 
@@ -1395,6 +1459,7 @@ function renderDataSource() {
   });
   renderMonthlyUtilizationChart(initialSummary);
   bindHeavyCheckSetupControls();
+  state.aircraftRevealPending = false;
 }
 
 function renderMonthlyUtilizationChart(summary) {

@@ -761,6 +761,130 @@ body.authenticated .login-screen {
   gap: 22px;
 }
 
+.aircraft-choice-screen {
+  display: grid;
+  min-height: calc(100vh - 168px);
+  align-content: center;
+  gap: 30px;
+}
+
+.aircraft-choice-copy {
+  max-width: 760px;
+}
+
+.aircraft-choice-copy .card-kicker {
+  color: rgba(255, 255, 255, 0.76);
+}
+
+.aircraft-choice-copy h2 {
+  margin: 5px 0 10px;
+  color: #ffffff;
+  font-size: clamp(2.4rem, 5vw, 5rem);
+  font-weight: 600;
+  line-height: 1;
+  text-shadow: 0 12px 34px rgba(5, 25, 46, 0.32);
+}
+
+.aircraft-choice-copy p:not(.card-kicker) {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.82);
+  font-size: clamp(1rem, 1.5vw, 1.18rem);
+  font-weight: 500;
+  line-height: 1.6;
+}
+
+.aircraft-choice-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 18px;
+}
+
+.aircraft-choice-card {
+  display: grid;
+  gap: 0;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-top: 8px solid transparent;
+  border-radius: var(--radius);
+  background: #ffffff;
+  padding: 0;
+  text-align: left;
+  box-shadow: 0 22px 48px rgba(5, 25, 46, 0.2);
+  transition: transform 220ms ease, border-color 220ms ease, box-shadow 220ms ease;
+}
+
+.aircraft-choice-card:hover,
+.aircraft-choice-card:focus-visible {
+  border-top-color: var(--accent);
+  box-shadow: 0 28px 58px rgba(5, 25, 46, 0.28);
+  transform: translateY(-4px);
+}
+
+.aircraft-choice-card:focus-visible {
+  outline: 3px solid rgba(255, 255, 255, 0.78);
+  outline-offset: 4px;
+}
+
+.aircraft-choice-card img {
+  display: block;
+  width: 100%;
+  height: clamp(190px, 24vw, 260px);
+  object-fit: cover;
+}
+
+.aircraft-choice-body {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 18px;
+  padding: 18px;
+}
+
+.aircraft-choice-body strong,
+.aircraft-choice-body small {
+  display: block;
+}
+
+.aircraft-choice-body strong {
+  color: var(--ink);
+  font-size: 1.06rem;
+  font-weight: 700;
+}
+
+.aircraft-choice-body small {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.78rem;
+  font-weight: 700;
+}
+
+.choice-action {
+  flex: 0 0 auto;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  padding: 9px 11px;
+  font-size: 0.76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.utilization-dashboard-reveal {
+  animation: aircraftDashboardReveal 820ms cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes aircraftDashboardReveal {
+  from {
+    opacity: 0;
+    transform: translateY(54px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .utilization-header {
   display: flex;
   align-items: flex-end;
@@ -2485,6 +2609,15 @@ body.image-preview-open {
     align-items: stretch;
   }
 
+  .aircraft-choice-screen {
+    min-height: auto;
+    padding-block: 20px;
+  }
+
+  .aircraft-choice-grid {
+    grid-template-columns: 1fr;
+  }
+
   .aircraft-filter-panel {
     align-items: stretch;
     flex-direction: column;
@@ -2545,6 +2678,20 @@ body.image-preview-open {
 
   .utilization-header {
     padding: 18px;
+  }
+
+  .aircraft-choice-copy h2 {
+    font-size: clamp(2.1rem, 13vw, 3.6rem);
+  }
+
+  .aircraft-choice-body {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .choice-action {
+    width: 100%;
+    text-align: center;
   }
 
   .aircraft-summary-card {
