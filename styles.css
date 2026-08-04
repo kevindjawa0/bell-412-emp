@@ -1831,6 +1831,45 @@ td select {
   text-transform: none;
 }
 
+.equalization-mode-switch {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 16px;
+  border: 1px solid var(--line);
+  border-left: 5px solid var(--accent);
+  border-radius: var(--radius);
+  background: #ffffff;
+  padding: 14px;
+}
+
+.equalization-mode-switch h3 {
+  margin: 5px 0 0;
+  color: var(--ink);
+  font-size: 1rem;
+  font-weight: 800;
+}
+
+.equalization-mode-switch .data-note {
+  flex-basis: 100%;
+  margin-top: 0;
+}
+
+.equalization-mode-switch.compact {
+  align-items: center;
+  margin-bottom: 0;
+  border: 0;
+  background: transparent;
+  padding: 0;
+}
+
+.equalization-mode-switch.compact .card-kicker {
+  font-size: 0.66rem;
+  white-space: nowrap;
+}
+
 .plan-option-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
@@ -2597,6 +2636,15 @@ body.image-preview-open {
     width: 100%;
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .equalization-mode-switch {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .equalization-mode-switch.compact {
+    align-items: flex-start;
   }
 
   .tabs {

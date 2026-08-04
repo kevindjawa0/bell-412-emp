@@ -81,6 +81,19 @@ const equalizedPrograms = {
   }
 };
 
+const equalizationModes = {
+  equalized: {
+    title: "Equalized",
+    shortLabel: "Equalized",
+    description: "Redistributes the selected eligible interval blocks."
+  },
+  semi: {
+    title: "Semi Equalized",
+    shortLabel: "Semi",
+    description: "Redistributes only the 5000-hour interval block."
+  }
+};
+
 const baselineIntervalKeys = ["25-hour", "100-hour", "300-hour", "600-hour", "5000-hour"];
 const manualTaskCardIntervalKeys = ["5000-hour"];
 
@@ -117,6 +130,7 @@ const maintenancePrograms = [
 const state = {
   section: "data-source",
   equalized: "100",
+  equalizationMode: "equalized",
   simulationView: "quarterly",
   showEqualizedComparison: false,
   activeDatePicker: null,
@@ -2421,6 +2435,38 @@ function getPackagePlanConfig(percentKey = state.equalized) {
   return equalizedPrograms[percentKey] || equalizedPrograms["100"];
 }
 
+function getActiveEqualizationMode(modeKey = state.equalizationMode) {
+  return equalizationModes[modeKey] || equalizationModes.equalized;
+}
+
+function getActiveEqualizationProgram(percentKey = state.equalized, modeKey = state.equalizationMode) {
+  const baseProgram = equalizedPrograms[percentKey] || equalizedPrograms["100"];
+  const mode = getActiveEqualizationMode(modeKey);
+
+  if (modeKey !== "semi") {
+    return {
+      ...baseProgram,
+      modeKey: "equalized",
+      modeTitle: mode.title
+    };
+  }
+
+  const percent = Math.round(baseProgram.spreadRatio * 100);
+  const isFullSpread = baseProgram.spreadRatio === 1;
+
+  return {
+    ...baseProgram,
+    title: `Semi Equalized ${percent}%`,
+    modeKey: "semi",
+    modeTitle: mode.title,
+    equalizedBlockKeys: ["5000-hour"],
+    redistributionMode: isFullSpread ? undefined : baseProgram.redistributionMode,
+    description: isFullSpread
+      ? "Spreads only the 5000-hour workload evenly across the 5-year simulation while the 25-hour, 100-hour, 300-hour, and 600-hour blocks remain on the baseline model."
+      : `Moves ${percent}% of the 5000-hour workload into earlier simulation periods while the 25-hour, 100-hour, 300-hour, and 600-hour blocks remain on the baseline model.`
+  };
+}
+
 function calculateStdDev(values) {
   if (!values.length) {
     return 0;
@@ -3626,7 +3672,7 @@ function renderBaseModelLoadingCard() {
 }
 
 function renderEqualizationLoadingCard() {
-  const program = equalizedPrograms[state.equalized] || equalizedPrograms["100"];
+  const program = getActiveEqualizationProgram();
   return `
     <article class="card baseline-loading-card equalization-loading-card" aria-live="polite">
       <div class="loading-spinner" aria-hidden="true"></div>
@@ -4567,20 +4613,51 @@ function bindExportControls(scenario, schedule = []) {
 
 function renderEqualizationOptionButtons() {
   return `
+    ${renderEqualizationModeSelector("choice")}
     <div class="plan-option-grid" role="radiogroup" aria-label="Equalization plan">
       ${Object.entries(equalizedPrograms)
         .sort(([a], [b]) => Number(b) - Number(a))
         .map(
-          ([key, program]) => `
+          ([key]) => {
+            const program = getActiveEqualizationProgram(key);
+            return `
             <button class="plan-option ${state.equalized === key ? "active" : ""}" data-equalized="${key}" type="button" aria-pressed="${
             state.equalized === key
           }">
               <strong>${escapeHtml(program.title)}</strong>
               <span>${escapeHtml(program.description)}</span>
             </button>
-          `
+          `;
+          }
         )
         .join("")}
+    </div>
+  `;
+}
+
+function renderEqualizationModeSelector(variant = "compact") {
+  const isCompact = variant === "compact";
+
+  return `
+    <div class="equalization-mode-switch ${isCompact ? "compact" : ""}">
+      <div>
+        <p class="card-kicker">Equalization Type</p>
+        ${isCompact ? "" : `<h3>Choose Workload Strategy</h3>`}
+      </div>
+      <div class="tabs compact-tabs" role="tablist" aria-label="Equalization type">
+        ${Object.entries(equalizationModes)
+          .map(
+            ([key, mode]) => `
+              <button class="${key === state.equalizationMode ? "active" : ""}" data-equalization-mode="${key}" type="button" aria-pressed="${
+              key === state.equalizationMode
+            }">
+                ${escapeHtml(mode.shortLabel)}
+              </button>
+            `
+          )
+          .join("")}
+      </div>
+      ${isCompact ? "" : `<p class="data-note">${escapeHtml(getActiveEqualizationMode().description)}</p>`}
     </div>
   `;
 }
@@ -4780,6 +4857,7 @@ function startEqualizationWithLoading(percentKey = state.equalized) {
   state.latestEqualizationScenario = null;
   state.manualPackageAssignments = {};
   const selectedPlanSnapshot = percentKey;
+  const selectedModeSnapshot = state.equalizationMode;
   const baselineSnapshot = getBaselineInputSnapshot();
   render();
 
@@ -4787,6 +4865,7 @@ function startEqualizationWithLoading(percentKey = state.equalized) {
     if (
       !state.equalizationLoading ||
       state.equalized !== selectedPlanSnapshot ||
+      state.equalizationMode !== selectedModeSnapshot ||
       getBaselineInputSnapshot() !== baselineSnapshot
     ) {
       return;
@@ -4794,13 +4873,13 @@ function startEqualizationWithLoading(percentKey = state.equalized) {
 
     state.equalizationLoading = false;
     state.equalizationStarted = true;
-    state.latestEqualizationScenario = buildEqualizedInspectionScenario(equalizedPrograms[state.equalized] || equalizedPrograms["100"]);
+    state.latestEqualizationScenario = buildEqualizedInspectionScenario(getActiveEqualizationProgram());
     render();
   }, 720);
 }
 
 function renderEqualizedInspection() {
-  const program = equalizedPrograms[state.equalized] || equalizedPrograms["100"];
+  const program = getActiveEqualizationProgram();
   const selectedProgram = getSelectedMaintenanceProgram();
   const baselineInputsReady = hasCompleteBaselineManHours();
   const baseModelReady = baselineInputsReady && state.baseModelStarted;
@@ -4879,6 +4958,7 @@ function renderEqualizedInspection() {
                   <h3>${escapeHtml(scenario.title)}</h3>
                 </div>
                 <div class="simulation-toolbar-actions">
+                  ${renderEqualizationModeSelector("compact")}
                   ${renderEqualizedQuickPlanTabs()}
                   <div class="tabs compact-tabs" role="tablist" aria-label="Simulation chart detail level">
                     ${Object.entries(simulationViews)
@@ -4933,6 +5013,32 @@ function renderEqualizedInspection() {
       state.ganttGenerated = false;
       state.latestEqualizationScenario = null;
       state.manualPackageAssignments = {};
+      render();
+    });
+  });
+  document.querySelectorAll("[data-equalization-mode]").forEach((button) => {
+    button.addEventListener("click", () => {
+      const nextMode = button.dataset.equalizationMode;
+      if (!equalizationModes[nextMode] || nextMode === state.equalizationMode) {
+        return;
+      }
+
+      const shouldRegenerate = state.equalizationStarted || state.equalizationLoading;
+      state.equalizationMode = nextMode;
+      state.ganttCreated = false;
+      state.ganttGenerated = false;
+      state.latestEqualizationScenario = null;
+      state.manualPackageAssignments = {};
+
+      if (shouldRegenerate) {
+        state.equalizationStarted = false;
+        state.equalizationLoading = false;
+        startEqualizationWithLoading(state.equalized);
+        return;
+      }
+
+      state.equalizationStarted = false;
+      state.equalizationLoading = false;
       render();
     });
   });
